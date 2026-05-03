@@ -1,0 +1,385 @@
+{
+  "users": [
+    {
+      "id": "d6799711-dbd7-485d-badd-e67cd856ffe6",
+      "uid": "0000001",
+      "nickname": "版主-砂砂",
+      "passwordHash": "$2b$10$7JGLpSYZp.yIBoxceudAMuaP98F6wGrTEf88FS8JNY/b7L1V4fnhu",
+      "avatarUrl": "/src/assets/images/avatars/%E7%9C%BC.png",
+      "age": "100",
+      "gender": "男",
+      "role": "admin"
+    },
+    {
+      "id": "7ddaac75-7c32-48dd-886e-e315f22eebc3",
+      "uid": "1331197",
+      "nickname": "走仙人",
+      "passwordHash": "$2b$10$DjBdVXa7kfUKM6lNw3MFVewdP89L/iJWOXfOwq3T//KSClmKrdkSW",
+      "avatarUrl": "/src/assets/images/avatars/%E8%80%B3.png",
+      "age": "120",
+      "gender": "男",
+      "role": "user"
+    },
+    {
+      "id": "9b7bdcf1-edbc-4663-9758-15b27ed36ddc",
+      "uid": "6842484",
+      "nickname": "星星",
+      "passwordHash": "$2b$10$17SuTS6GacwDvSajLbyE1.MwWU0upS.qwNTw1zAJRvj6AUPgJ/W4q",
+      "avatarUrl": "/src/assets/images/avatars/%E7%9C%BC.png",
+      "age": "20",
+      "gender": "男",
+      "role": "user"
+    },
+    {
+      "id": "34de74a8-b386-412c-b35a-f8fa709175f7",
+      "uid": "2419529",
+      "nickname": "缨珠",
+      "passwordHash": "$2b$10$OGzXDO46vFh2xn/845KiFecal49d/LanMvn2OcQNIwC2jqac6d8zC",
+      "avatarUrl": "/src/assets/images/avatars/%E7%9C%BC.png",
+      "age": "16",
+      "gender": "男",
+      "role": "user"
+    },
+    {
+      "id": "62422c31-3c44-45a3-8798-c61832deb649",
+      "uid": "3311117",
+      "nickname": "血疫",
+      "passwordHash": "$2b$10$TfDEu3Sbs3kU/Kb9D/zhOO57RdACdqwKvu6aufZKkW0DWy2kNDjBq",
+      "avatarUrl": "/src/assets/images/avatars/%E5%98%B4.png",
+      "age": "20",
+      "gender": "男",
+      "role": "user"
+    },
+    {
+      "id": "2d701a6c-6284-447f-bacd-17bfea8f430e",
+      "uid": "5041011",
+      "nickname": "飞燕归777",
+      "passwordHash": "$2b$10$9x9TFQ0z7yxMMNZTlSkuzuN1Q0uwi24UUguL72BM5ra0HVmTIk6eq",
+      "avatarUrl": "/src/assets/images/avatars/%E7%9C%BC.png",
+      "age": "60",
+      "gender": "男",
+      "role": "user"
+    },
+    {
+      "id": "51063fc2-d3be-4796-b818-59d67cdb762a",
+      "uid": "6470508",
+      "nickname": "九生有幸",
+      "passwordHash": "$2b$10$lqa3Qyzdky7O9sE3CaJsV.o8mxx90eB386RAMH/mxXtVm7t41BPcy",
+      "avatarUrl": "/src/assets/images/avatars/%E7%9C%BC.png",
+      "age": "17",
+      "gender": "男",
+      "role": "user"
+    }
+  ],
+  "posts": [
+    {
+      "id": "post-1777471199364",
+      "type": "我的",
+      "isFeatured": false,
+      "isPinned": true,
+      "tag": "置顶",
+      "title": "欢迎来到頭七论坛",
+      "authorName": "版主-砂砂",
+      "avatarUrl": "/src/assets/images/avatars/%E7%9C%BC.png",
+      "createdAt": "2026-04-29T13:59:59.364Z",
+      "replies": [
+        {
+          "id": "r-1777471199353",
+          "userId": "d6799711-dbd7-485d-badd-e67cd856ffe6",
+          "userName": "版主-砂砂",
+          "avatarUrl": "/src/assets/images/avatars/%E7%9C%BC.png",
+          "content": "我是版主砂砂，一下是本论坛的使用规则~",
+          "createdAt": "2026-04-29T13:59:59.353Z"
+        }
+      ],
+      "isLocked": true
+    },
+    {
+      "id": "post-1777377921371",
+      "type": "直播",
+      "tag": "直播",
+      "title": "住在我隔壁奇怪的一家三口",
+      "authorName": "该用户已注销",
+      "avatarUrl": "",
+      "createdAt": "2026-04-28T12:05:21.371Z",
+      "replies": [
+        {
+          "id": "r-1777377921352",
+          "userId": "6cb42dc1-d512-4f01-87b4-0dd7e4bb59ca",
+          "userName": "该用户已注销",
+          "avatarUrl": "",
+          "content": "事情是这样，楼主今年刚搬来这个小区，因为这个小区房租比较便宜，一年才一千块，但是住在我隔壁的一家三口却很奇怪",
+          "createdAt": "2026-04-28T12:05:21.352Z"
+        },
+        {
+          "id": "r-1777378130596",
+          "userId": "51063fc2-d3be-4796-b818-59d67cdb762a",
+          "userName": "九生有幸",
+          "avatarUrl": "/src/assets/images/avatars/%E7%9C%BC.png",
+          "content": "楼楼怎么注销了，不会真的遇上凶宅了把",
+          "createdAt": "2026-04-28T12:08:50.596Z"
+        },
+        {
+          "id": "r-1777378207347",
+          "userId": "51063fc2-d3be-4796-b818-59d67cdb762a",
+          "userName": "九生有幸",
+          "avatarUrl": "/src/assets/images/avatars/%E7%9C%BC.png",
+          "content": "@该用户已注销 楼楼~",
+          "createdAt": "2026-04-28T12:10:07.347Z"
+        },
+        {
+          "id": "r-1777471567068",
+          "userId": "d6799711-dbd7-485d-badd-e67cd856ffe6",
+          "userName": "版主-砂砂",
+          "avatarUrl": "/src/assets/images/avatars/%E7%9C%BC.png",
+          "content": "此帖已成坟贴，禁止回复",
+          "createdAt": "2026-04-29T14:06:07.068Z"
+        }
+      ],
+      "isFeatured": true,
+      "isPinned": false,
+      "isLocked": true
+    },
+    {
+      "id": "post-1777375843838",
+      "type": "我的",
+      "tag": "讨论",
+      "title": "刘青成有什么好粉的",
+      "authorName": "走仙人",
+      "avatarUrl": "/src/assets/images/avatars/%E8%80%B3.png",
+      "createdAt": "2026-04-28T11:30:43.838Z",
+      "replies": [
+        {
+          "id": "r-1777375843815",
+          "userId": "7ddaac75-7c32-48dd-886e-e315f22eebc3",
+          "userName": "走仙人",
+          "avatarUrl": "/src/assets/images/avatars/%E8%80%B3.png",
+          "content": "演技这么烂，怎么还有这么多脑残粉，不服就来找我我在福田百货，我姓朱",
+          "createdAt": "2026-04-28T11:30:43.815Z"
+        },
+        {
+          "id": "r-1777375951378",
+          "userId": "9b7bdcf1-edbc-4663-9758-15b27ed36ddc",
+          "userName": "星星",
+          "avatarUrl": "/src/assets/images/avatars/%E7%9C%BC.png",
+          "content": "@走仙人 楼上的，虽然我也很不爽那个姓刘的，但是你这么冒充是不是不太好。。。",
+          "createdAt": "2026-04-28T11:32:31.378Z"
+        },
+        {
+          "id": "r-1777376124181",
+          "userId": "34de74a8-b386-412c-b35a-f8fa709175f7",
+          "userName": "缨珠",
+          "avatarUrl": "/src/assets/images/avatars/%E7%9C%BC.png",
+          "content": "你们不许这么说青城哥，你们根本不知道他有多么努力",
+          "createdAt": "2026-04-28T11:35:24.181Z"
+        },
+        {
+          "id": "r-1777376187131",
+          "userId": "62422c31-3c44-45a3-8798-c61832deb649",
+          "userName": "血疫",
+          "avatarUrl": "/src/assets/images/avatars/%E5%98%B4.png",
+          "content": "我说你们这算不算实名上网呢",
+          "createdAt": "2026-04-28T11:36:27.131Z"
+        },
+        {
+          "id": "r-1777379834304",
+          "userId": "7ddaac75-7c32-48dd-886e-e315f22eebc3",
+          "userName": "走仙人",
+          "avatarUrl": "/src/assets/images/avatars/%E8%80%B3.png",
+          "content": "@缨珠 刘青成还有小腿毛呢",
+          "createdAt": "2026-04-28T12:37:14.304Z"
+        },
+        {
+          "id": "r-1777384778451",
+          "userId": "9b7bdcf1-edbc-4663-9758-15b27ed36ddc",
+          "userName": "星星",
+          "avatarUrl": "/src/assets/images/avatars/%E7%9C%BC.png",
+          "content": "@缨珠 努力什么，努力杀人吗",
+          "createdAt": "2026-04-28T13:59:38.451Z"
+        },
+        {
+          "id": "r-1777384963401",
+          "userId": "62422c31-3c44-45a3-8798-c61832deb649",
+          "userName": "血疫",
+          "avatarUrl": "/src/assets/images/avatars/%E5%98%B4.png",
+          "content": "@星星 朱老板，有些事情知道了也不要乱说",
+          "createdAt": "2026-04-28T14:02:43.401Z"
+        },
+        {
+          "id": "r-1777385141684",
+          "userId": "34de74a8-b386-412c-b35a-f8fa709175f7",
+          "userName": "缨珠",
+          "avatarUrl": "/src/assets/images/avatars/%E7%9C%BC.png",
+          "content": "对了，青城哥最近要开演唱会了你们知道吗，这次我还是要抢第一排，我的心理医生说很愿意陪我一起看",
+          "createdAt": "2026-04-28T14:05:41.684Z"
+        }
+      ],
+      "isFeatured": false,
+      "isPinned": false,
+      "isLocked": false
+    }
+  ],
+  "messages": [
+    {
+      "id": "m-1777379261900",
+      "senderId": "51063fc2-d3be-4796-b818-59d67cdb762a",
+      "receiverId": "34de74a8-b386-412c-b35a-f8fa709175f7",
+      "content": "你好",
+      "createdAt": "2026-04-28T12:27:41.900Z"
+    },
+    {
+      "id": "m-1777379284019",
+      "senderId": "51063fc2-d3be-4796-b818-59d67cdb762a",
+      "receiverId": "34de74a8-b386-412c-b35a-f8fa709175f7",
+      "content": "你是缨缨吗",
+      "createdAt": "2026-04-28T12:28:04.019Z"
+    },
+    {
+      "id": "m-1777379938738",
+      "senderId": "34de74a8-b386-412c-b35a-f8fa709175f7",
+      "receiverId": "7ddaac75-7c32-48dd-886e-e315f22eebc3",
+      "content": "111",
+      "createdAt": "2026-04-28T12:38:58.738Z"
+    },
+    {
+      "id": "m-1777380035678",
+      "senderId": "34de74a8-b386-412c-b35a-f8fa709175f7",
+      "receiverId": "d6799711-dbd7-485d-badd-e67cd856ffe6",
+      "content": "莫医生，青城哥的演唱会门票马上要开卖了。可以帮我买内场票吗，是下周日哦，如果你有空的话可以和我一起去",
+      "createdAt": "2026-04-28T12:40:35.678Z"
+    },
+    {
+      "id": "m-1777380304163",
+      "senderId": "34de74a8-b386-412c-b35a-f8fa709175f7",
+      "receiverId": "7ddaac75-7c32-48dd-886e-e315f22eebc3",
+      "content": "111",
+      "createdAt": "2026-04-28T12:45:04.163Z"
+    },
+    {
+      "id": "m-1777380432418",
+      "senderId": "7ddaac75-7c32-48dd-886e-e315f22eebc3",
+      "receiverId": "34de74a8-b386-412c-b35a-f8fa709175f7",
+      "content": "怎么了小腿毛",
+      "createdAt": "2026-04-28T12:47:12.418Z"
+    },
+    {
+      "id": "m-1777380444151",
+      "senderId": "7ddaac75-7c32-48dd-886e-e315f22eebc3",
+      "receiverId": "34de74a8-b386-412c-b35a-f8fa709175f7",
+      "content": "111",
+      "createdAt": "2026-04-28T12:47:24.151Z"
+    },
+    {
+      "id": "m-1777380582447",
+      "senderId": "34de74a8-b386-412c-b35a-f8fa709175f7",
+      "receiverId": "51063fc2-d3be-4796-b818-59d67cdb762a",
+      "content": "是我哦，你是谁",
+      "createdAt": "2026-04-28T12:49:42.447Z"
+    },
+    {
+      "id": "m-1777381482899",
+      "senderId": "51063fc2-d3be-4796-b818-59d67cdb762a",
+      "receiverId": "34de74a8-b386-412c-b35a-f8fa709175f7",
+      "content": "我是尤九九，这周末我们学校探灵小队要去芳华大剧院探险，你要来不",
+      "createdAt": "2026-04-28T13:04:42.899Z"
+    },
+    {
+      "id": "m-1777381840346",
+      "senderId": "34de74a8-b386-412c-b35a-f8fa709175f7",
+      "receiverId": "51063fc2-d3be-4796-b818-59d67cdb762a",
+      "content": "哦，原来是九九哥啊，我就算了，这周末我要进行小主持人的培训，话说九九哥你的作业写完了吗周末还可以出去玩",
+      "createdAt": "2026-04-28T13:10:40.346Z"
+    },
+    {
+      "id": "m-1777381997217",
+      "senderId": "51063fc2-d3be-4796-b818-59d67cdb762a",
+      "receiverId": "34de74a8-b386-412c-b35a-f8fa709175f7",
+      "content": "诶呀，你别提作业的事情了，暑假不是才刚刚开始呢，到时候在补也不迟",
+      "createdAt": "2026-04-28T13:13:17.227Z"
+    },
+    {
+      "id": "m-1777384117588",
+      "senderId": "34de74a8-b386-412c-b35a-f8fa709175f7",
+      "receiverId": "7ddaac75-7c32-48dd-886e-e315f22eebc3",
+      "content": "你凭什么这么说青城哥，你根本不知道他有多么努力，他就是最完美的偶像",
+      "createdAt": "2026-04-28T13:48:37.642Z"
+    },
+    {
+      "id": "m-1777384280886",
+      "senderId": "7ddaac75-7c32-48dd-886e-e315f22eebc3",
+      "receiverId": "34de74a8-b386-412c-b35a-f8fa709175f7",
+      "content": "老子就是看他爱装不爽怎么了，你这小屁孩真麻烦在发消息就拉黑你",
+      "createdAt": "2026-04-28T13:51:20.886Z"
+    },
+    {
+      "id": "m-1777384338401",
+      "senderId": "34de74a8-b386-412c-b35a-f8fa709175f7",
+      "receiverId": "7ddaac75-7c32-48dd-886e-e315f22eebc3",
+      "content": "我还要拉黑你呢",
+      "createdAt": "2026-04-28T13:52:18.401Z"
+    },
+    {
+      "id": "m-1777384381214",
+      "senderId": "34de74a8-b386-412c-b35a-f8fa709175f7",
+      "receiverId": "7ddaac75-7c32-48dd-886e-e315f22eebc3",
+      "content": "111",
+      "createdAt": "2026-04-28T13:53:01.214Z"
+    },
+    {
+      "id": "m-1777384487814",
+      "senderId": "d6799711-dbd7-485d-badd-e67cd856ffe6",
+      "receiverId": "34de74a8-b386-412c-b35a-f8fa709175f7",
+      "content": "缨缨啊，你上次去看完演唱会之后我的工资已经用的差不多了，这次可以选后面一点的位置吗",
+      "createdAt": "2026-04-28T13:54:47.814Z"
+    },
+    {
+      "id": "m-1777384530707",
+      "senderId": "51063fc2-d3be-4796-b818-59d67cdb762a",
+      "receiverId": "34de74a8-b386-412c-b35a-f8fa709175f7",
+      "content": "还是去芳华大剧院探险更加要紧",
+      "createdAt": "2026-04-28T13:55:30.707Z"
+    },
+    {
+      "id": "m-1777384615472",
+      "senderId": "34de74a8-b386-412c-b35a-f8fa709175f7",
+      "receiverId": "d6799711-dbd7-485d-badd-e67cd856ffe6",
+      "content": "莫医生，如果不在第一排看青城表演，就不能看到他最完美的一面了（哭）",
+      "createdAt": "2026-04-28T13:56:55.472Z"
+    },
+    {
+      "id": "m-1777386043723",
+      "senderId": "7ddaac75-7c32-48dd-886e-e315f22eebc3",
+      "receiverId": "34de74a8-b386-412c-b35a-f8fa709175f7",
+      "content": "111",
+      "createdAt": "2026-04-28T14:20:43.723Z"
+    },
+    {
+      "id": "m-1777450517579",
+      "senderId": "7ddaac75-7c32-48dd-886e-e315f22eebc3",
+      "receiverId": "34de74a8-b386-412c-b35a-f8fa709175f7",
+      "content": "111",
+      "createdAt": "2026-04-29T08:15:17.579Z"
+    },
+    {
+      "id": "m-1777450522743",
+      "senderId": "7ddaac75-7c32-48dd-886e-e315f22eebc3",
+      "receiverId": "34de74a8-b386-412c-b35a-f8fa709175f7",
+      "content": "111",
+      "createdAt": "2026-04-29T08:15:22.743Z"
+    }
+  ],
+  "follows": [
+    {
+      "followerId": "51063fc2-d3be-4796-b818-59d67cdb762a",
+      "followeeId": "7ddaac75-7c32-48dd-886e-e315f22eebc3",
+      "createdAt": "2026-04-28T12:28:45.373Z"
+    }
+  ],
+  "blocks": [
+    {
+      "blockerId": "7ddaac75-7c32-48dd-886e-e315f22eebc3",
+      "blockedId": "d6799711-dbd7-485d-badd-e67cd856ffe6",
+      "createdAt": "2026-04-29T13:38:09.294Z"
+    }
+  ]
+}

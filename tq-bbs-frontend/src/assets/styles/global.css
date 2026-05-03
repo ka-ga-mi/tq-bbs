@@ -1,0 +1,70 @@
+:root {
+  --tq-bg: #07090d;
+  --tq-panel: #0f1218;
+  --tq-text: #000;
+  --tq-muted: #8d91a0;
+  --tq-line: #801010;
+  --tq-danger: #b80f0f;
+  --tq-accent: #e41616;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  font-family:
+    'Microsoft YaHei',
+    'PingFang SC',
+    Inter,
+    system-ui,
+    -apple-system,
+    sans-serif;
+  background: var(--tq-bg);
+  color: var(--tq-text);
+  background-image:
+    radial-gradient(circle at 12% 18%, rgba(184, 15, 15, 0.16), transparent 42%),
+    radial-gradient(circle at 86% 78%, rgba(184, 15, 15, 0.1), transparent 36%);
+}
+
+/* 全局滚动条统一为黑红主题，避免默认亮色滚动条突兀 */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #b80f0f #07090d;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: #07090d;
+  border: 1px solid #801010;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #e41616 0%, #b80f0f 100%);
+  border: 1px solid #350505;
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #ff2727 0%, #cf1414 100%);
+}
+
+*::-webkit-scrollbar-corner {
+  background: #07090d;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
