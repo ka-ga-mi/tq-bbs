@@ -4,6 +4,7 @@ import cors from 'cors'
 import bcrypt from 'bcryptjs'
 import { v4 as uuidv4 } from 'uuid'
 import { readDb, writeDb } from './db.js'
+import { routeParam } from './routeParam.js'
 import { signToken, verifyToken } from './auth.js'
 import type { DbMessage, DbPost, DbReply, DbUser, Gender } from './types.js'
 
@@ -36,11 +37,20 @@ const authMiddleware: express.RequestHandler = (req: AuthedRequest, res, next) =
   }
 }
 
+/** 数据库里常见的开发期路径，公网接口不应再下发给浏览器 */
+const sanitizeAvatarUrlForApi = (url: string | undefined): string => {
+  if (!url?.trim()) return ''
+  const s = url.trim()
+  if (s.includes('/src/')) return ''
+  if (/localhost|127\.0\.0\.1/i.test(s)) return ''
+  return s
+}
+
 const toPublicUser = (user: DbUser) => ({
   id: user.id,
   uid: user.uid,
   nickname: user.nickname,
-  avatarUrl: user.avatarUrl,
+  avatarUrl: sanitizeAvatarUrlForApi(user.avatarUrl),
   age: user.age,
   gender: user.gender,
   role: user.role,
@@ -150,7 +160,7 @@ app.get('/api/users/following', authMiddleware, (req: AuthedRequest, res) => {
       id: user.id,
       uid: user.uid,
       nickname: user.nickname,
-      avatarUrl: user.avatarUrl,
+      avatarUrl: sanitizeAvatarUrlForApi(user.avatarUrl),
     }))
   res.json(list)
 })
@@ -165,14 +175,14 @@ app.get('/api/users/followers', authMiddleware, (req: AuthedRequest, res) => {
       id: user.id,
       uid: user.uid,
       nickname: user.nickname,
-      avatarUrl: user.avatarUrl,
+      avatarUrl: sanitizeAvatarUrlForApi(user.avatarUrl),
     }))
   res.json(list)
 })
 
 app.get('/api/users/:id/public', (req, res) => {
   const db = readDb()
-  const targetUser = db.users.find((item) => item.id === req.params.id)
+  const targetUser = db.users.find((item) => item.id === routeParam(req.params.id))
   if (!targetUser) {
     res.status(404).json({ message: '用户不存在或已注销' })
     return
@@ -185,7 +195,7 @@ app.get('/api/users/:id/public', (req, res) => {
     id: targetUser.id,
     uid: targetUser.uid,
     nickname: targetUser.nickname,
-    avatarUrl: targetUser.avatarUrl,
+    avatarUrl: sanitizeAvatarUrlForApi(targetUser.avatarUrl),
     age: targetUser.age,
     gender: targetUser.gender,
     role: targetUser.role,
@@ -196,7 +206,7 @@ app.get('/api/users/:id/public', (req, res) => {
 
 app.get('/api/users/:id/follow-status', authMiddleware, (req: AuthedRequest, res) => {
   const db = readDb()
-  const followeeId = req.params.id
+  const followeeId = routeParam(req.params.id)
   const followerId = req.userId as string
   const followeeExists = db.users.some((item) => item.id === followeeId)
   if (!followeeExists) {
@@ -209,7 +219,7 @@ app.get('/api/users/:id/follow-status', authMiddleware, (req: AuthedRequest, res
 
 app.get('/api/users/:id/block-status', authMiddleware, (req: AuthedRequest, res) => {
   const db = readDb()
-  const blockedId = req.params.id
+  const blockedId = routeParam(req.params.id)
   const blockerId = req.userId as string
   const blockedExists = db.users.some((item) => item.id === blockedId)
   if (!blockedExists) {
@@ -222,8 +232,12 @@ app.get('/api/users/:id/block-status', authMiddleware, (req: AuthedRequest, res)
 
 app.post('/api/users/:id/follow', authMiddleware, (req: AuthedRequest, res) => {
   const db = readDb()
-  const followeeId = req.params.id
+  const followeeId = routeParam(req.params.id)
   const followerId = req.userId as string
+  if (!followeeId) {
+    res.status(400).json({ message: '缺少用户 id' })
+    return
+  }
   if (followeeId === followerId) {
     res.status(400).json({ message: '不能关注自己' })
     return
@@ -242,7 +256,7 @@ app.post('/api/users/:id/follow', authMiddleware, (req: AuthedRequest, res) => {
 
 app.delete('/api/users/:id/follow', authMiddleware, (req: AuthedRequest, res) => {
   const db = readDb()
-  const followeeId = req.params.id
+  const followeeId = routeParam(req.params.id)
   const followerId = req.userId as string
   const before = db.follows.length
   db.follows = db.follows.filter((item) => !(item.followerId === followerId && item.followeeId === followeeId))
@@ -252,8 +266,12 @@ app.delete('/api/users/:id/follow', authMiddleware, (req: AuthedRequest, res) =>
 
 app.post('/api/users/:id/block', authMiddleware, (req: AuthedRequest, res) => {
   const db = readDb()
-  const blockedId = req.params.id
+  const blockedId = routeParam(req.params.id)
   const blockerId = req.userId as string
+  if (!blockedId) {
+    res.status(400).json({ message: '缺少用户 id' })
+    return
+  }
   if (blockedId === blockerId) {
     res.status(400).json({ message: '不能拉黑自己' })
     return
@@ -286,7 +304,7 @@ app.post('/api/users/:id/block', authMiddleware, (req: AuthedRequest, res) => {
 
 app.delete('/api/users/:id/block', authMiddleware, (req: AuthedRequest, res) => {
   const db = readDb()
-  const blockedId = req.params.id
+  const blockedId = routeParam(req.params.id)
   const blockerId = req.userId as string
   const before = db.blocks.length
   db.blocks = db.blocks.filter((item) => !(item.blockerId === blockerId && item.blockedId === blockedId))
@@ -341,7 +359,7 @@ app.get('/api/posts', (_req, res) => {
     tag: item.tag,
     title: item.title,
     authorName: item.authorName || '匿名用户',
-    avatarUrl: item.avatarUrl,
+    avatarUrl: sanitizeAvatarUrlForApi(item.avatarUrl),
     createdAt: item.createdAt,
   }))
   res.json(posts)
@@ -349,25 +367,41 @@ app.get('/api/posts', (_req, res) => {
 
 app.get('/api/posts/:id', (req, res) => {
   const db = readDb()
-  const post = db.posts.find((item) => item.id === req.params.id)
+  const post = db.posts.find((item) => item.id === routeParam(req.params.id))
   if (!post) {
     res.status(404).json({ message: '帖子不存在' })
     return
   }
-  res.json(post)
+  res.json({
+    ...post,
+    avatarUrl: sanitizeAvatarUrlForApi(post.avatarUrl),
+    replies: post.replies.map((r) => ({
+      ...r,
+      avatarUrl: sanitizeAvatarUrlForApi(r.avatarUrl),
+    })),
+  })
 })
 
 app.get('/api/posts-mine', authMiddleware, (req: AuthedRequest, res) => {
   const db = readDb()
   const myId = req.userId as string
   const myPosts = db.posts.filter((post) => post.replies[0]?.userId === myId)
-  res.json(myPosts)
+  res.json(
+    myPosts.map((p) => ({
+      ...p,
+      avatarUrl: sanitizeAvatarUrlForApi(p.avatarUrl),
+      replies: p.replies.map((r) => ({
+        ...r,
+        avatarUrl: sanitizeAvatarUrlForApi(r.avatarUrl),
+      })),
+    })),
+  )
 })
 
 app.delete('/api/posts/:id', authMiddleware, (req: AuthedRequest, res) => {
   const db = readDb()
   const myId = req.userId as string
-  const postId = req.params.id
+  const postId = routeParam(req.params.id)
 
   const postIndex = db.posts.findIndex((p) => p.id === postId)
   if (postIndex === -1) {
@@ -395,7 +429,7 @@ app.post('/api/posts/:id/featured', authMiddleware, (req: AuthedRequest, res) =>
     res.status(403).json({ message: '仅管理员可操作精品帖' })
     return
   }
-  const post = db.posts.find((item) => item.id === req.params.id)
+  const post = db.posts.find((item) => item.id === routeParam(req.params.id))
   if (!post) {
     res.status(404).json({ message: '帖子不存在' })
     return
@@ -412,7 +446,7 @@ app.delete('/api/posts/:id/featured', authMiddleware, (req: AuthedRequest, res) 
     res.status(403).json({ message: '仅管理员可操作精品帖' })
     return
   }
-  const post = db.posts.find((item) => item.id === req.params.id)
+  const post = db.posts.find((item) => item.id === routeParam(req.params.id))
   if (!post) {
     res.status(404).json({ message: '帖子不存在' })
     return
@@ -429,7 +463,7 @@ app.post('/api/posts/:id/pinned', authMiddleware, (req: AuthedRequest, res) => {
     res.status(403).json({ message: '仅管理员可操作置顶帖' })
     return
   }
-  const post = db.posts.find((item) => item.id === req.params.id)
+  const post = db.posts.find((item) => item.id === routeParam(req.params.id))
   if (!post) {
     res.status(404).json({ message: '帖子不存在' })
     return
@@ -446,7 +480,7 @@ app.delete('/api/posts/:id/pinned', authMiddleware, (req: AuthedRequest, res) =>
     res.status(403).json({ message: '仅管理员可操作置顶帖' })
     return
   }
-  const post = db.posts.find((item) => item.id === req.params.id)
+  const post = db.posts.find((item) => item.id === routeParam(req.params.id))
   if (!post) {
     res.status(404).json({ message: '帖子不存在' })
     return
@@ -463,7 +497,7 @@ app.post('/api/posts/:id/locked', authMiddleware, (req: AuthedRequest, res) => {
     res.status(403).json({ message: '仅管理员可操作锁帖' })
     return
   }
-  const post = db.posts.find((item) => item.id === req.params.id)
+  const post = db.posts.find((item) => item.id === routeParam(req.params.id))
   if (!post) {
     res.status(404).json({ message: '帖子不存在' })
     return
@@ -480,7 +514,7 @@ app.delete('/api/posts/:id/locked', authMiddleware, (req: AuthedRequest, res) =>
     res.status(403).json({ message: '仅管理员可操作锁帖' })
     return
   }
-  const post = db.posts.find((item) => item.id === req.params.id)
+  const post = db.posts.find((item) => item.id === routeParam(req.params.id))
   if (!post) {
     res.status(404).json({ message: '帖子不存在' })
     return
@@ -538,7 +572,14 @@ app.post('/api/posts', authMiddleware, (req: AuthedRequest, res) => {
   }
   db.posts.unshift(newPost)
   writeDb(db)
-  res.status(201).json(newPost)
+  res.status(201).json({
+    ...newPost,
+    avatarUrl: sanitizeAvatarUrlForApi(newPost.avatarUrl),
+    replies: newPost.replies.map((r) => ({
+      ...r,
+      avatarUrl: sanitizeAvatarUrlForApi(r.avatarUrl),
+    })),
+  })
 })
 
 app.post('/api/posts/:id/replies', authMiddleware, (req: AuthedRequest, res) => {
@@ -550,7 +591,7 @@ app.post('/api/posts/:id/replies', authMiddleware, (req: AuthedRequest, res) => 
 
   const db = readDb()
   const user = db.users.find((item) => item.id === req.userId)
-  const post = db.posts.find((item) => item.id === req.params.id)
+  const post = db.posts.find((item) => item.id === routeParam(req.params.id))
   if (!user) {
     res.status(401).json({ message: '用户不存在，请重新登录' })
     return
@@ -574,13 +615,20 @@ app.post('/api/posts/:id/replies', authMiddleware, (req: AuthedRequest, res) => 
   }
   post.replies.push(reply)
   writeDb(db)
-  res.status(201).json(reply)
+  res.status(201).json({
+    ...reply,
+    avatarUrl: sanitizeAvatarUrlForApi(reply.avatarUrl),
+  })
 })
 
 app.get('/api/chat/messages/:targetUserId', authMiddleware, (req: AuthedRequest, res) => {
   const db = readDb()
   const mine = req.userId as string
-  const target = req.params.targetUserId
+  const target = routeParam(req.params.targetUserId)
+  if (!target) {
+    res.status(400).json({ message: '缺少目标用户' })
+    return
+  }
   const messages = db.messages
     .filter(
       (msg) =>
@@ -621,7 +669,7 @@ app.get('/api/chat/conversations', authMiddleware, (req: AuthedRequest, res) => 
       byTarget.set(targetId, {
         contactId: targetUser.id,
         contactName: targetUser.nickname,
-        avatarUrl: targetUser.avatarUrl,
+        avatarUrl: sanitizeAvatarUrlForApi(targetUser.avatarUrl),
         messages: [],
       })
     }
@@ -641,7 +689,7 @@ app.get('/api/chat/conversations', authMiddleware, (req: AuthedRequest, res) => 
 app.delete('/api/chat/conversations/:targetUserId', authMiddleware, (req: AuthedRequest, res) => {
   const db = readDb()
   const mine = req.userId as string
-  const target = req.params.targetUserId
+  const target = routeParam(req.params.targetUserId)
   if (!target) {
     res.status(400).json({ message: '缺少目标用户' })
     return
@@ -670,7 +718,11 @@ app.post('/api/chat/messages/:targetUserId', authMiddleware, (req: AuthedRequest
 
   const db = readDb()
   const mine = req.userId as string
-  const target = req.params.targetUserId
+  const target = routeParam(req.params.targetUserId)
+  if (!target) {
+    res.status(400).json({ message: '缺少目标用户' })
+    return
+  }
 
   if (!db.users.some((item) => item.id === target)) {
     res.status(404).json({ message: '聊天对象不存在' })
@@ -702,7 +754,7 @@ app.post('/api/chat/messages/by-name/:targetName', authMiddleware, (req: AuthedR
 
   const db = readDb()
   const mine = req.userId as string
-  const target = db.users.find((item) => item.nickname === req.params.targetName)
+  const target = db.users.find((item) => item.nickname === routeParam(req.params.targetName))
   if (!target) {
     res.status(404).json({ message: '聊天对象不存在' })
     return

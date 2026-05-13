@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import type { Database } from './types.js'
+import type { Database, UserRole } from './types.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const DATA_PATH = path.resolve(__dirname, '../data/db.json')
@@ -29,23 +29,26 @@ export const readDb = (): Database => {
     const parsed = JSON.parse(raw) as Database
     const users = (parsed.users ?? []).map((item) => ({
       ...item,
-      role: item.role === 'admin' ? 'admin' : 'user',
+      role: (item.role === 'admin' ? 'admin' : 'user') as UserRole,
     }))
     if (users.length > 0 && !users.some((item) => item.role === 'admin')) {
-      users[0].role = 'admin'
+      const head = users.at(0)
+      if (head) head.role = 'admin'
     }
-    return {
+    const posts = (parsed.posts ?? []).map((item) => ({
+      ...item,
+      isFeatured: Boolean(item.isFeatured || item.type === '精品'),
+      isPinned: Boolean(item.isPinned),
+      isLocked: Boolean(item.isLocked),
+    }))
+    const result: Database = {
       users,
-      posts: (parsed.posts ?? []).map((item) => ({
-        ...item,
-        isFeatured: Boolean(item.isFeatured || item.type === '精品'),
-        isPinned: Boolean(item.isPinned),
-        isLocked: Boolean(item.isLocked),
-      })),
+      posts,
       messages: parsed.messages ?? [],
       follows: parsed.follows ?? [],
       blocks: parsed.blocks ?? [],
     }
+    return result
   } catch {
     return createDefaultDb()
   }

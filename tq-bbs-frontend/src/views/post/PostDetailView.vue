@@ -3,7 +3,7 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { homePosts } from '../../mocks/homePosts'
 import { postDetails } from '../../mocks/postDetails'
-import { avatarAssets } from '../../mocks/userProfile'
+import { avatarAssets, resolveDisplayAvatarUrl } from '../../mocks/userProfile'
 import { apiRequest } from '../../api/client'
 
 const route = useRoute()
@@ -113,7 +113,7 @@ const loadBackendPostDetail = async () => {
         id: item.id,
         userId: item.userId,
         userName: item.userName || '匿名用户',
-        avatarUrl: item.avatarUrl || avatarAssets.nose,
+        avatarUrl: resolveDisplayAvatarUrl(item.avatarUrl),
         content: item.content || '',
       })),
     }
@@ -179,7 +179,7 @@ const submitReply = async () => {
     const newReply = {
       id: data.id,
       userName: data.userName,
-      avatarUrl: data.avatarUrl,
+      avatarUrl: resolveDisplayAvatarUrl(data.avatarUrl),
       content: data.content,
     }
     if (backendDetail.value) {
@@ -245,8 +245,11 @@ onMounted(() => {
             ]"
             @click.stop="openUserProfile(reply)"
           >
-            <img v-if="reply.avatarUrl" :src="reply.avatarUrl" alt="回复头像" class="h-full w-full rounded-full object-cover" />
-            <div v-else class="flex h-full w-full items-center justify-center text-14px text-black">TA</div>
+            <img
+              :src="resolveDisplayAvatarUrl(reply.avatarUrl)"
+              alt="回复头像"
+              class="h-full w-full rounded-full object-cover"
+            />
           </div>
 
           <div class="flex-1" :class="isMyReply(reply.userName) ? 'order-1 text-right' : 'order-2 text-left'">

@@ -26,6 +26,73 @@ export const avatarAssets = {
   nose: avatarNose,
 }
 
+const safeDecode = (p: string) => {
+  try {
+    return decodeURIComponent(p)
+  } catch {
+    return p
+  }
+}
+
+/** 根据路径/文件名中的「眼耳鼻嘴」映射到打包后的资源 */
+const mapChineseToAsset = (text: string): string | null => {
+  if (text.includes('眼')) return avatarAssets.eye
+  if (text.includes('耳')) return avatarAssets.ear
+  if (text.includes('嘴')) return avatarAssets.mouth
+  if (text.includes('鼻')) return avatarAssets.nose
+  return null
+}
+
+/**
+ * 后端常存：
+ * - `/src/assets/images/avatars/眼.png`（生产无此路径）
+ * - `http://localhost:5173/src/...`（浏览器会去访问用户本机，必裂图）
+ * 统一映射为打包后的 `/assets/…` 地址。
+ */
+export function resolveDisplayAvatarUrl(raw: string | undefined | null): string {
+  if (!raw?.trim()) return avatarAssets.nose
+  const s = raw.trim()
+
+  if (s.startsWith('data:')) return s
+
+  // 完整 URL：禁止直接放行 localhost / 127.0.0.1 / 含 /src 的开发地址
+  if (s.startsWith('http://') || s.startsWith('https://')) {
+    try {
+      const u = new URL(s)
+      const path = u.pathname + (u.search || '')
+      const decoded = safeDecode(path)
+      const mapped = mapChineseToAsset(decoded)
+      if (mapped) return mapped
+
+      const brokenDev =
+        u.hostname === 'localhost' ||
+        u.hostname === '127.0.0.1' ||
+        u.port === '5173' ||
+        path.includes('/src/') ||
+        path.includes('avatars')
+      if (brokenDev) return avatarAssets.nose
+
+      return s
+    } catch {
+      return avatarAssets.nose
+    }
+  }
+
+  if (s.startsWith('/assets/')) return s
+  if (s.startsWith('assets/')) return `/${s}`
+
+  const decodedFull = safeDecode(s)
+  const mappedPath = mapChineseToAsset(decodedFull)
+  if (mappedPath) return mappedPath
+
+  if (s.includes('/src/') || decodedFull.includes('avatars')) {
+    const m = mapChineseToAsset(decodedFull)
+    return m ?? avatarAssets.nose
+  }
+
+  return mapChineseToAsset(s) ?? s
+}
+
 export const currentUserProfile: UserProfile = {
   id: 'user-001',
   uid: '7207094',

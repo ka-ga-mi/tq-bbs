@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { avatarAssets } from '../../mocks/userProfile'
+import { avatarAssets, resolveDisplayAvatarUrl } from '../../mocks/userProfile'
 import { apiRequest } from '../../api/client'
 
 const route = useRoute()
@@ -33,9 +33,7 @@ const goChat = () => {
       path: '/home',
       query: {
         login: '1',
-        redirect: `/chat?target=${encodeURIComponent(profile.value.nickname)}&avatar=${encodeURIComponent(
-          profile.value.avatarUrl || avatarAssets.nose,
-        )}&targetId=${encodeURIComponent(profile.value.id)}`,
+        redirect: `/chat?target=${encodeURIComponent(profile.value.nickname)}&avatar=${encodeURIComponent(profile.value.avatarUrl)}&targetId=${encodeURIComponent(profile.value.id)}`,
       },
     })
     return
@@ -48,7 +46,7 @@ const goChat = () => {
     path: '/chat',
     query: {
       target: profile.value.nickname,
-      avatar: profile.value.avatarUrl || avatarAssets.nose,
+      avatar: profile.value.avatarUrl,
       targetId: profile.value.id,
     },
   })
@@ -142,7 +140,7 @@ const loadProfile = async () => {
       id: data.id,
       uid: data.uid,
       nickname: data.nickname,
-      avatarUrl: data.avatarUrl || avatarAssets.nose,
+      avatarUrl: resolveDisplayAvatarUrl(data.avatarUrl),
       age: data.age || '未知',
       role: data.role === 'admin' ? 'admin' : 'user',
       fansCount: Number.isFinite(data.fansCount) ? data.fansCount : 0,

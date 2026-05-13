@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { avatarAssets, currentUserProfile } from '../../mocks/userProfile'
+import { avatarAssets, currentUserProfile, resolveDisplayAvatarUrl } from '../../mocks/userProfile'
 import { apiRequest } from '../../api/client'
 
 const AUTH_STORAGE_KEY = 'tq_bbs_auth'
@@ -71,7 +71,7 @@ const loadProfile = async () => {
     backendProfile.value = {
       uid: data.uid,
       nickname: data.user.nickname,
-      avatarUrl: data.user.avatarUrl,
+      avatarUrl: resolveDisplayAvatarUrl(data.user.avatarUrl),
       role: data.user.role === 'admin' ? 'admin' : 'user',
       stats: [
         { label: '年龄', value: data.user.age || '未知' },
@@ -95,7 +95,9 @@ const openFollowingList = async () => {
     const data = await apiRequest<Array<{ id: string; nickname: string; avatarUrl: string }>>('/api/users/following', {
       auth: true,
     })
-    followingList.value = Array.isArray(data) ? data : []
+    followingList.value = Array.isArray(data)
+      ? data.map((u) => ({ ...u, avatarUrl: resolveDisplayAvatarUrl(u.avatarUrl) }))
+      : []
   } catch (error) {
     followingList.value = []
     followingError.value = error instanceof Error ? error.message : '加载关注列表失败'
@@ -118,7 +120,9 @@ const openFollowersList = async () => {
     const data = await apiRequest<Array<{ id: string; nickname: string; avatarUrl: string }>>('/api/users/followers', {
       auth: true,
     })
-    followersList.value = Array.isArray(data) ? data : []
+    followersList.value = Array.isArray(data)
+      ? data.map((u) => ({ ...u, avatarUrl: resolveDisplayAvatarUrl(u.avatarUrl) }))
+      : []
   } catch (error) {
     followersList.value = []
     followersError.value = error instanceof Error ? error.message : '加载粉丝列表失败'

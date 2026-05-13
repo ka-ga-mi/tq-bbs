@@ -2,7 +2,7 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { chatDataByUid, emptyChatData, type ChatDataset, type ChatMessage } from '../../mocks/chatData'
-import { avatarAssets } from '../../mocks/userProfile'
+import { avatarAssets, resolveDisplayAvatarUrl } from '../../mocks/userProfile'
 import { apiRequest } from '../../api/client'
 
 const route = useRoute()
@@ -35,7 +35,7 @@ const targetContact = computed(() =>
     ? {
         id: targetUserId.value || targetContactId.value,
         name: targetName.value,
-        avatarUrl: targetAvatar.value || avatarAssets.nose,
+        avatarUrl: resolveDisplayAvatarUrl(targetAvatar.value),
       }
     : null,
 )
@@ -176,7 +176,7 @@ const loadCurrentUser = async () => {
       id: data.user.id,
       uid: data.uid,
       nickname: data.user.nickname,
-      avatarUrl: data.user.avatarUrl || avatarAssets.nose,
+      avatarUrl: resolveDisplayAvatarUrl(data.user.avatarUrl),
     }
   } catch {
     currentUser.value = null
@@ -232,7 +232,7 @@ const loadConversations = async () => {
       contacts: data.map((item) => ({
         id: item.contactId,
         name: item.contactName,
-        avatarUrl: item.avatarUrl || avatarAssets.nose,
+        avatarUrl: resolveDisplayAvatarUrl(item.avatarUrl),
       })),
       threads: data.map((item) => ({
         contactId: item.contactId,
@@ -241,7 +241,7 @@ const loadConversations = async () => {
           id: msg.id,
           from: msg.senderId === currentUserId.value ? 'me' : 'other',
           sender: msg.senderId === currentUserId.value ? myDisplayName.value : item.contactName,
-          avatarUrl: msg.senderId === currentUserId.value ? myAvatarUrl.value : item.avatarUrl || avatarAssets.nose,
+          avatarUrl: msg.senderId === currentUserId.value ? myAvatarUrl.value : resolveDisplayAvatarUrl(item.avatarUrl),
           content: msg.content || '',
         })),
       })),
@@ -279,7 +279,7 @@ const loadBackendMessages = async () => {
       id: item.id,
       from: item.senderId === currentUserId.value ? 'me' : 'other',
       sender: item.senderId === currentUserId.value ? myDisplayName.value : targetName.value || '对方',
-      avatarUrl: item.senderId === currentUserId.value ? myAvatarUrl.value : targetAvatar.value || avatarAssets.nose,
+      avatarUrl: item.senderId === currentUserId.value ? myAvatarUrl.value : resolveDisplayAvatarUrl(targetAvatar.value),
       content: item.content || '',
     }))
   } catch (error) {

@@ -1,5 +1,40 @@
 const AUTH_STORAGE_KEY = 'tq_bbs_auth'
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
+
+const envApi = (): string | undefined => {
+  const v = __TQ_BBS_API_BASE__
+  return v ? v : undefined
+}
+
+const isLocalhostApiUrl = (url: string) => {
+  try {
+    const { hostname } = new URL(url)
+    return hostname === 'localhost' || hostname === '127.0.0.1'
+  } catch {
+    return false
+  }
+}
+
+/** 解析 API 根地址；公网访问时走同域 /api（见 vite.config + `.env.development`） */
+function resolveApiBase(): string {
+  const env = envApi()
+
+  if (typeof window !== 'undefined') {
+    const h = window.location.hostname
+    if (h !== 'localhost' && h !== '127.0.0.1') {
+      if (env && env !== '' && !isLocalhostApiUrl(env)) return env
+      return ''
+    }
+  }
+
+  if (import.meta.env.DEV) {
+    return env !== undefined && env !== '' ? env : ''
+  }
+
+  let base = env !== undefined && env !== '' ? env : ''
+  if (import.meta.env.PROD && base && isLocalhostApiUrl(base)) base = ''
+  return base
+}
+
 const FORCE_MOCK_MODE = import.meta.env.VITE_USE_MOCK === 'true'
 
 type ApiOptions = {
@@ -20,7 +55,6 @@ const getToken = () => {
 }
 
 export const apiRequest = async <T>(path: string, options: ApiOptions = {}): Promise<T> => {
-  // Allow frontend to keep using local mock data even when backend is running.
   if (FORCE_MOCK_MODE) {
     throw new Error(`Mock mode enabled: skip API request ${path}`)
   }
@@ -34,7 +68,8 @@ export const apiRequest = async <T>(path: string, options: ApiOptions = {}): Pro
     if (token) headers.Authorization = `Bearer ${token}`
   }
 
-  const res = await fetch(`${API_BASE_URL}${path}`, {
+  const base = resolveApiBase()
+  const res = await fetch(`${base}${path}`, {
     method: options.method || 'GET',
     headers,
     body: options.body ? JSON.stringify(options.body) : undefined,

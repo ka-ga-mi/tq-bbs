@@ -2,7 +2,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { homePosts, type HomePostItem } from '../../mocks/homePosts'
-import { avatarAssets } from '../../mocks/userProfile'
+import { avatarAssets, resolveDisplayAvatarUrl } from '../../mocks/userProfile'
 import { apiRequest } from '../../api/client'
 
 const AUTH_STORAGE_KEY = 'tq_bbs_auth'
@@ -333,7 +333,7 @@ const loadCurrentUser = async () => {
       id: data.user.id,
       uid: data.uid,
       nickname: data.user.nickname,
-      avatarUrl: data.user.avatarUrl || avatarAssets.nose,
+      avatarUrl: resolveDisplayAvatarUrl(data.user.avatarUrl),
       age: data.user.age || '未知',
       gender: data.user.gender || '未知',
       role: data.user.role === 'admin' ? 'admin' : 'user',
@@ -370,7 +370,7 @@ const loadBackendPosts = async () => {
         tag: item.tag || '讨论',
         title: item.title || '未命名帖子',
         authorName: item.authorName || '匿名用户',
-        avatarUrl: item.avatarUrl || avatarAssets.nose,
+        avatarUrl: resolveDisplayAvatarUrl(item.avatarUrl),
       })),
     )
   } catch {
@@ -606,7 +606,7 @@ const doLogin = async () => {
       id: data.user.id,
       uid: data.uid,
       nickname: data.user.nickname,
-      avatarUrl: data.user.avatarUrl || avatarAssets.nose,
+      avatarUrl: resolveDisplayAvatarUrl(data.user.avatarUrl),
       age: data.user.age || '未知',
       gender: data.user.gender || '未知',
       role: data.user.role === 'admin' ? 'admin' : 'user',
@@ -769,7 +769,7 @@ const submitPost = async () => {
       tag: data.tag,
       title: data.title,
       authorName: data.authorName || currentUser.value.nickname,
-      avatarUrl: data.avatarUrl || currentUser.value.avatarUrl || avatarAssets.nose,
+      avatarUrl: resolveDisplayAvatarUrl(data.avatarUrl || currentUser.value.avatarUrl),
     })
   } catch (error) {
     postError.value = error instanceof Error ? error.message : '发帖失败，请稍后重试'
@@ -790,7 +790,8 @@ const submitPost = async () => {
 
 const headerUserName = computed(() => (isLoggedIn.value ? currentUser.value?.nickname ?? '佚名' : '未登录'))
 const headerUid = computed(() => (isLoggedIn.value ? currentUser.value?.uid ?? '0000000' : '0000000'))
-const circleAvatarUrl = computed(() => (isLoggedIn.value ? currentUser.value?.avatarUrl ?? '' : ''))
+/** 未登录也显示默认头像，避免 token 失效（401）时整圈空白像「裂图」 */
+const circleAvatarUrl = computed(() => resolveDisplayAvatarUrl(currentUser.value?.avatarUrl))
 const isAdmin = computed(() => currentUser.value?.role === 'admin')
 
 watch(totalPages, () => {
@@ -847,11 +848,12 @@ onUnmounted(() => {
           </div>
           <div class="mt-30px flex gap-10px">
           <button
+            type="button"
             class="ml-auto h-180px w-180px overflow-hidden rounded-full border-[5px] border-black bg-danger/90 p-0 text-40px font-700 text-black"
+            :title="isLoggedIn ? '进入档案' : '点击登录'"
             @click="handleCircleClick"
           >
-            <img v-if="circleAvatarUrl" :src="circleAvatarUrl" alt="用户头像" class="h-full w-full rounded-full object-cover" />
-            <span v-else>{{ isLoggedIn ? '我的' : '登录' }}</span>
+            <img :src="circleAvatarUrl" alt="用户头像" class="h-full w-full rounded-full object-cover" />
           </button>
             <button class="tq-btn relative min-w-120px tq-text h-40px self-end" @click="openChatPage">
               私聊
@@ -895,7 +897,7 @@ onUnmounted(() => {
     @click="openPost(item.id)"
   >
             <img
-              :src="item.avatarUrl"
+              :src="resolveDisplayAvatarUrl(item.avatarUrl)"
               alt="帖子头像"
               class="h-52px w-52px shrink-0 rounded-full border-[5px] border-black object-cover"
             />
