@@ -13,3 +13,7 @@ export function routeParam(value) {
     }
     return undefined;
 }
+/** 从 `req.params` 取值时先转成 `unknown`，避免返回值被推断成 `string | string[]` */
+export function routeReqParam(req, name) {
+    return routeParam(req.params[name]);
+}

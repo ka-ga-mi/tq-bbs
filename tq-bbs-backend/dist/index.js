@@ -4,7 +4,7 @@ import cors from 'cors';
 import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 import { readDb, writeDb } from './db.js';
-import { routeParam } from './routeParam.js';
+import { routeReqParam } from './routeParam.js';
 import { signToken, verifyToken } from './auth.js';
 const app = express();
 const port = Number(process.env.PORT || 3000);
@@ -151,7 +151,7 @@ app.get('/api/users/followers', authMiddleware, (req, res) => {
 });
 app.get('/api/users/:id/public', (req, res) => {
     const db = readDb();
-    const targetUser = db.users.find((item) => item.id === routeParam(req.params.id));
+    const targetUser = db.users.find((item) => item.id === routeReqParam(req, 'id'));
     if (!targetUser) {
         res.status(404).json({ message: '用户不存在或已注销' });
         return;
@@ -172,7 +172,7 @@ app.get('/api/users/:id/public', (req, res) => {
 });
 app.get('/api/users/:id/follow-status', authMiddleware, (req, res) => {
     const db = readDb();
-    const followeeId = routeParam(req.params.id);
+    const followeeId = routeReqParam(req, 'id');
     const followerId = req.userId;
     const followeeExists = db.users.some((item) => item.id === followeeId);
     if (!followeeExists) {
@@ -184,7 +184,7 @@ app.get('/api/users/:id/follow-status', authMiddleware, (req, res) => {
 });
 app.get('/api/users/:id/block-status', authMiddleware, (req, res) => {
     const db = readDb();
-    const blockedId = routeParam(req.params.id);
+    const blockedId = routeReqParam(req, 'id');
     const blockerId = req.userId;
     const blockedExists = db.users.some((item) => item.id === blockedId);
     if (!blockedExists) {
@@ -196,7 +196,7 @@ app.get('/api/users/:id/block-status', authMiddleware, (req, res) => {
 });
 app.post('/api/users/:id/follow', authMiddleware, (req, res) => {
     const db = readDb();
-    const followeeId = routeParam(req.params.id);
+    const followeeId = routeReqParam(req, 'id');
     const followerId = req.userId;
     if (!followeeId) {
         res.status(400).json({ message: '缺少用户 id' });
@@ -219,7 +219,7 @@ app.post('/api/users/:id/follow', authMiddleware, (req, res) => {
 });
 app.delete('/api/users/:id/follow', authMiddleware, (req, res) => {
     const db = readDb();
-    const followeeId = routeParam(req.params.id);
+    const followeeId = routeReqParam(req, 'id');
     const followerId = req.userId;
     const before = db.follows.length;
     db.follows = db.follows.filter((item) => !(item.followerId === followerId && item.followeeId === followeeId));
@@ -229,7 +229,7 @@ app.delete('/api/users/:id/follow', authMiddleware, (req, res) => {
 });
 app.post('/api/users/:id/block', authMiddleware, (req, res) => {
     const db = readDb();
-    const blockedId = routeParam(req.params.id);
+    const blockedId = routeReqParam(req, 'id');
     const blockerId = req.userId;
     if (!blockedId) {
         res.status(400).json({ message: '缺少用户 id' });
@@ -261,7 +261,7 @@ app.post('/api/users/:id/block', authMiddleware, (req, res) => {
 });
 app.delete('/api/users/:id/block', authMiddleware, (req, res) => {
     const db = readDb();
-    const blockedId = routeParam(req.params.id);
+    const blockedId = routeReqParam(req, 'id');
     const blockerId = req.userId;
     const before = db.blocks.length;
     db.blocks = db.blocks.filter((item) => !(item.blockerId === blockerId && item.blockedId === blockedId));
@@ -317,7 +317,7 @@ app.get('/api/posts', (_req, res) => {
 });
 app.get('/api/posts/:id', (req, res) => {
     const db = readDb();
-    const post = db.posts.find((item) => item.id === routeParam(req.params.id));
+    const post = db.posts.find((item) => item.id === routeReqParam(req, 'id'));
     if (!post) {
         res.status(404).json({ message: '帖子不存在' });
         return;
@@ -347,7 +347,7 @@ app.get('/api/posts-mine', authMiddleware, (req, res) => {
 app.delete('/api/posts/:id', authMiddleware, (req, res) => {
     const db = readDb();
     const myId = req.userId;
-    const postId = routeParam(req.params.id);
+    const postId = routeReqParam(req, 'id');
     const postIndex = db.posts.findIndex((p) => p.id === postId);
     if (postIndex === -1) {
         res.status(404).json({ message: '帖子不存在' });
@@ -371,7 +371,7 @@ app.post('/api/posts/:id/featured', authMiddleware, (req, res) => {
         res.status(403).json({ message: '仅管理员可操作精品帖' });
         return;
     }
-    const post = db.posts.find((item) => item.id === routeParam(req.params.id));
+    const post = db.posts.find((item) => item.id === routeReqParam(req, 'id'));
     if (!post) {
         res.status(404).json({ message: '帖子不存在' });
         return;
@@ -387,7 +387,7 @@ app.delete('/api/posts/:id/featured', authMiddleware, (req, res) => {
         res.status(403).json({ message: '仅管理员可操作精品帖' });
         return;
     }
-    const post = db.posts.find((item) => item.id === routeParam(req.params.id));
+    const post = db.posts.find((item) => item.id === routeReqParam(req, 'id'));
     if (!post) {
         res.status(404).json({ message: '帖子不存在' });
         return;
@@ -403,7 +403,7 @@ app.post('/api/posts/:id/pinned', authMiddleware, (req, res) => {
         res.status(403).json({ message: '仅管理员可操作置顶帖' });
         return;
     }
-    const post = db.posts.find((item) => item.id === routeParam(req.params.id));
+    const post = db.posts.find((item) => item.id === routeReqParam(req, 'id'));
     if (!post) {
         res.status(404).json({ message: '帖子不存在' });
         return;
@@ -419,7 +419,7 @@ app.delete('/api/posts/:id/pinned', authMiddleware, (req, res) => {
         res.status(403).json({ message: '仅管理员可操作置顶帖' });
         return;
     }
-    const post = db.posts.find((item) => item.id === routeParam(req.params.id));
+    const post = db.posts.find((item) => item.id === routeReqParam(req, 'id'));
     if (!post) {
         res.status(404).json({ message: '帖子不存在' });
         return;
@@ -435,7 +435,7 @@ app.post('/api/posts/:id/locked', authMiddleware, (req, res) => {
         res.status(403).json({ message: '仅管理员可操作锁帖' });
         return;
     }
-    const post = db.posts.find((item) => item.id === routeParam(req.params.id));
+    const post = db.posts.find((item) => item.id === routeReqParam(req, 'id'));
     if (!post) {
         res.status(404).json({ message: '帖子不存在' });
         return;
@@ -451,7 +451,7 @@ app.delete('/api/posts/:id/locked', authMiddleware, (req, res) => {
         res.status(403).json({ message: '仅管理员可操作锁帖' });
         return;
     }
-    const post = db.posts.find((item) => item.id === routeParam(req.params.id));
+    const post = db.posts.find((item) => item.id === routeReqParam(req, 'id'));
     if (!post) {
         res.status(404).json({ message: '帖子不存在' });
         return;
@@ -517,7 +517,7 @@ app.post('/api/posts/:id/replies', authMiddleware, (req, res) => {
     }
     const db = readDb();
     const user = db.users.find((item) => item.id === req.userId);
-    const post = db.posts.find((item) => item.id === routeParam(req.params.id));
+    const post = db.posts.find((item) => item.id === routeReqParam(req, 'id'));
     if (!user) {
         res.status(401).json({ message: '用户不存在，请重新登录' });
         return;
@@ -548,7 +548,7 @@ app.post('/api/posts/:id/replies', authMiddleware, (req, res) => {
 app.get('/api/chat/messages/:targetUserId', authMiddleware, (req, res) => {
     const db = readDb();
     const mine = req.userId;
-    const target = routeParam(req.params.targetUserId);
+    const target = routeReqParam(req, 'targetUserId');
     if (!target) {
         res.status(400).json({ message: '缺少目标用户' });
         return;
@@ -591,7 +591,7 @@ app.get('/api/chat/conversations', authMiddleware, (req, res) => {
 app.delete('/api/chat/conversations/:targetUserId', authMiddleware, (req, res) => {
     const db = readDb();
     const mine = req.userId;
-    const target = routeParam(req.params.targetUserId);
+    const target = routeReqParam(req, 'targetUserId');
     if (!target) {
         res.status(400).json({ message: '缺少目标用户' });
         return;
@@ -612,7 +612,7 @@ app.post('/api/chat/messages/:targetUserId', authMiddleware, (req, res) => {
     }
     const db = readDb();
     const mine = req.userId;
-    const target = routeParam(req.params.targetUserId);
+    const target = routeReqParam(req, 'targetUserId');
     if (!target) {
         res.status(400).json({ message: '缺少目标用户' });
         return;
@@ -644,7 +644,7 @@ app.post('/api/chat/messages/by-name/:targetName', authMiddleware, (req, res) =>
     }
     const db = readDb();
     const mine = req.userId;
-    const target = db.users.find((item) => item.nickname === routeParam(req.params.targetName));
+    const target = db.users.find((item) => item.nickname === routeReqParam(req, 'targetName'));
     if (!target) {
         res.status(404).json({ message: '聊天对象不存在' });
         return;
