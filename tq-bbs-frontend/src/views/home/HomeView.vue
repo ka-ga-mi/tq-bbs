@@ -705,7 +705,7 @@ const doRegister = async () => {
         password,
         age,
         gender: registerGender.value,
-        avatarUrl: avatarAssets[registerAvatarKey.value],
+        avatarUrl: registerAvatarKey.value,
       },
     })
   } catch (error) {

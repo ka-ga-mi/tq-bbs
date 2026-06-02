@@ -6,6 +6,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { readDb, writeDb } from './db.js'
 import { routeReqParam } from './routeParam.js'
 import { signToken, verifyToken } from './auth.js'
+import { normalizeAvatarUrl, sanitizeAvatarUrlForApi } from './avatar.js'
 import type { DbMessage, DbPost, DbReply, DbUser, Gender } from './types.js'
 
 const app = express()
@@ -35,15 +36,6 @@ const authMiddleware: express.RequestHandler = (req: AuthedRequest, res, next) =
   } catch {
     res.status(401).json({ message: 'token 无效或已过期' })
   }
-}
-
-/** 数据库里常见的开发期路径，公网接口不应再下发给浏览器 */
-const sanitizeAvatarUrlForApi = (url: string | undefined): string => {
-  if (!url?.trim()) return ''
-  const s = url.trim()
-  if (s.includes('/src/')) return ''
-  if (/localhost|127\.0\.0\.1/i.test(s)) return ''
-  return s
 }
 
 const toPublicUser = (user: DbUser) => ({
@@ -102,7 +94,7 @@ app.post('/api/auth/register', async (req, res) => {
     uid,
     nickname: nickname.trim(),
     passwordHash: await bcrypt.hash(password, 10),
-    avatarUrl: avatarUrl || '',
+    avatarUrl: normalizeAvatarUrl(avatarUrl) || 'nose',
     age: age.trim(),
     gender,
     role: db.users.length === 0 ? 'admin' : 'user',

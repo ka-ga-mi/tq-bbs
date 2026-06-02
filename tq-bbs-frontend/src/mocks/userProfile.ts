@@ -26,6 +26,10 @@ export const avatarAssets = {
   nose: avatarNose,
 }
 
+export type AvatarKey = keyof typeof avatarAssets
+
+const avatarByKey: Record<AvatarKey, string> = avatarAssets
+
 const safeDecode = (p: string) => {
   try {
     return decodeURIComponent(p)
@@ -52,6 +56,8 @@ const mapChineseToAsset = (text: string): string | null => {
 export function resolveDisplayAvatarUrl(raw: string | undefined | null): string {
   if (!raw?.trim()) return avatarAssets.nose
   const s = raw.trim()
+
+  if (s in avatarByKey) return avatarByKey[s as AvatarKey]
 
   if (s.startsWith('data:')) return s
 
