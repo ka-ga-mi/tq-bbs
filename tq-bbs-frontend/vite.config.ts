@@ -23,6 +23,17 @@ export default defineConfig(({ mode }) => {
         '@': fileURLToPath(new URL('./src', import.meta.url)),
       },
     },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              if (id.includes('vue') || id.includes('vue-router') || id.includes('pinia')) return 'vue-vendor'
+            }
+          },
+        },
+      },
+    },
     server: {
       host: '0.0.0.0',
       port: 5173,

@@ -139,11 +139,11 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="h-full bg-black/96 p-14px">
-    <div class="h-full flex flex-col border border-[var(--tq-line)] p-14px">
-      <div class="mb-14px flex items-start justify-between gap-16px">
-        <div class="flex items-center gap-12px">
-          <div class="h-170px w-170px overflow-hidden rounded-full border-[5px] border-black bg-danger/90 p-0">
+  <div class="h-full bg-black/96 p-10px sm:p-14px">
+    <div class="h-full flex flex-col border border-[var(--tq-line)] p-10px sm:p-14px">
+      <div class="mb-14px flex flex-col gap-12px sm:flex-row sm:items-start sm:justify-between">
+        <div class="flex flex-col items-center gap-12px sm:flex-row sm:items-center">
+          <div class="tq-avatar-lg shrink-0 overflow-hidden rounded-full border-[5px] border-black bg-danger/90 p-0">
             <img
               v-if="activeProfile.avatarUrl"
               :src="activeProfile.avatarUrl"
@@ -152,15 +152,15 @@ onMounted(() => {
             />
             <div v-else class="h-full w-full rounded-full bg-black/70" />
           </div>
-          <div>
-            <h2 class="m-0 text-34px tracking-4px text-danger">[ {{ activeProfile.nickname }} ]</h2>
-            <div v-if="isAdminProfile" class="mt-6px text-20px tracking-2px text-danger/85">管理员</div>
+          <div class="text-center sm:text-left">
+            <h2 class="tq-text-hero m-0 tracking-2px sm:tracking-4px text-danger">[ {{ activeProfile.nickname }} ]</h2>
+            <div v-if="isAdminProfile" class="mt-6px tq-text-lg tracking-1px sm:tracking-2px text-danger/85">管理员</div>
           </div>
         </div>
-        <div class="flex flex-col items-end gap-8px">
-          <div class="text-danger/80 text-24px">UID：{{ activeProfile.uid }}</div>
+        <div class="flex flex-col items-center gap-8px sm:items-end">
+          <div class="text-danger/80 tq-text-lg">UID：{{ activeProfile.uid }}</div>
           <button
-            class="bg-transparent border-none p-0 text-28px tracking-2px text-danger/85 font-700"
+            class="bg-transparent border-none p-0 tq-text-lg tracking-1px sm:tracking-2px text-danger/85 font-700"
             :disabled="deleting"
             @click="deleteModalVisible = true"
           >
@@ -170,35 +170,35 @@ onMounted(() => {
         </div>
       </div>
 
-      <div class="mb-18px flex-1 grid grid-cols-[140px_1fr_1fr] content-center gap-y-12px text-danger">
-        <div class="flex items-center justify-center text-40px tracking-8px [writing-mode:vertical-rl]">
+      <div class="tq-profile-grid mb-18px flex-1 text-danger">
+        <div class="tq-profile-side-label flex items-center justify-center">
           档案记录
         </div>
 
-        <div class="space-y-12px pl-8px text-38px">
+        <div class="space-y-8px sm:space-y-12px pl-0 sm:pl-8px tq-text-stat">
           <div>年龄：{{ getStatValue('年龄') }}</div>
           <div>性别：{{ getStatValue('性别') }}</div>
-          <button class="bg-transparent border-none p-0 text-38px text-danger" @click="openFollowingList">
+          <button class="bg-transparent border-none p-0 tq-text-stat text-danger" @click="openFollowingList">
             关注：{{ getStatValue('关注') }}
           </button>
         </div>
 
-        <div class="space-y-12px text-38px">
-          <button class="bg-transparent border-none p-0 text-38px text-danger" @click="openFollowersList">
+        <div class="space-y-8px sm:space-y-12px tq-text-stat">
+          <button class="bg-transparent border-none p-0 tq-text-stat text-danger" @click="openFollowersList">
             粉丝：{{ getStatValue('粉丝') }}
           </button>
           <div>足迹：{{ getStatValue('足迹') }}</div>
-          <button class="bg-transparent border-none p-0 text-38px text-danger" @click="goMyPosts">
+          <button class="bg-transparent border-none p-0 tq-text-stat text-danger" @click="goMyPosts">
             我的帖子：{{ getStatValue('我的帖子') }}
           </button>
         </div>
       </div>
 
-      <div class="mt-12px flex shrink-0 items-end justify-between">
-        <button class="bg-transparent border-none p-0 text-48px tracking-4px text-danger font-700" @click="goHome">
+      <div class="mt-12px flex shrink-0 flex-wrap items-end justify-between gap-12px">
+        <button class="bg-transparent border-none p-0 text-28px sm:text-48px tracking-2px sm:tracking-4px text-danger font-700" @click="goHome">
           &lt; 返回
         </button>
-        <button class="bg-transparent border-none p-0 text-48px tracking-6px text-danger font-700" @click="logout">
+        <button class="bg-transparent border-none p-0 text-28px sm:text-48px tracking-3px sm:tracking-6px text-danger font-700" @click="logout">
           退出登录
         </button>
       </div>

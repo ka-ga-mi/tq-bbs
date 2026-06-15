@@ -6,6 +6,21 @@
   --tq-line: #801010;
   --tq-danger: #b80f0f;
   --tq-accent: #e41616;
+
+  /* 随视口缩放的间距与尺寸 */
+  --tq-page-pad-x: clamp(8px, 2.5vw, 14px);
+  --tq-page-pad-y: clamp(10px, 2.5vh, 20px);
+  --tq-shell-height: min(92dvh, calc(100dvh - var(--tq-page-pad-y) * 2));
+  --tq-shell-width: min(96vw, 1600px);
+  --tq-avatar-xl: clamp(88px, 20vw, 180px);
+  --tq-avatar-lg: clamp(80px, 16vw, 170px);
+  --tq-avatar-md: clamp(40px, 9vw, 52px);
+  --tq-avatar-sm: clamp(36px, 8vw, 42px);
+  --tq-text-hero: clamp(22px, 4.5vw, 34px);
+  --tq-text-stat: clamp(16px, 3.2vw, 38px);
+  --tq-text-lg: clamp(16px, 2.8vw, 24px);
+  --tq-text-md: clamp(14px, 2.2vw, 18px);
+  --tq-text-sm: clamp(12px, 1.8vw, 14px);
 }
 
 * {
@@ -67,4 +82,211 @@ body {
 a {
   text-decoration: none;
   color: inherit;
+}
+
+/* 主壳层：宽度/高度随屏幕变化 */
+.tq-shell {
+  width: var(--tq-shell-width);
+  height: var(--tq-shell-height);
+  max-width: 1600px;
+  margin-inline: auto;
+}
+
+.tq-avatar-xl {
+  width: var(--tq-avatar-xl);
+  height: var(--tq-avatar-xl);
+}
+
+.tq-avatar-lg {
+  width: var(--tq-avatar-lg);
+  height: var(--tq-avatar-lg);
+}
+
+.tq-avatar-md {
+  width: var(--tq-avatar-md);
+  height: var(--tq-avatar-md);
+}
+
+.tq-avatar-sm {
+  width: var(--tq-avatar-sm);
+  height: var(--tq-avatar-sm);
+}
+
+.tq-text-hero {
+  font-size: var(--tq-text-hero);
+}
+
+.tq-text-stat {
+  font-size: var(--tq-text-stat);
+}
+
+.tq-text-lg {
+  font-size: var(--tq-text-lg);
+}
+
+.tq-text-md {
+  font-size: var(--tq-text-md);
+}
+
+/* 首页头部：窄屏纵向堆叠 */
+.tq-home-header {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: auto;
+  min-height: 0;
+  flex-shrink: 0;
+}
+
+@media (min-width: 768px) {
+  .tq-home-header {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+    height: 40%;
+  }
+}
+
+.tq-home-header__info {
+  max-width: 100%;
+  font-size: var(--tq-text-sm);
+}
+
+@media (min-width: 768px) {
+  .tq-home-header__info {
+    max-width: 55%;
+    font-size: 16px;
+  }
+}
+
+.tq-home-header__actions {
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  .tq-home-header__actions {
+    width: 45%;
+  }
+}
+
+.tq-home-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  height: auto;
+}
+
+@media (min-width: 768px) {
+  .tq-home-body {
+    height: 60%;
+  }
+}
+
+/* 分类 Tab：窄屏可换行、去大左边距 */
+.tq-home-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-left: 0;
+  justify-content: center;
+}
+
+@media (min-width: 768px) {
+  .tq-home-tabs {
+    gap: 20px;
+    margin-left: 100px;
+    justify-content: flex-start;
+  }
+}
+
+/* 帖子行：窄屏操作按钮常显（触摸设备无 hover） */
+.tq-post-row__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+  width: 100%;
+}
+
+.tq-post-row__actions .tq-btn-ghost {
+  font-size: var(--tq-text-sm);
+  padding: 4px 10px;
+}
+
+@media (min-width: 768px) {
+  .tq-post-row__actions {
+    position: absolute;
+    right: 10px;
+    top: 10px;
+    margin-top: 0;
+    width: auto;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+
+  .group:hover .tq-post-row__actions {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+/* 档案页网格：窄屏单列 */
+.tq-profile-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  align-content: start;
+}
+
+@media (min-width: 640px) {
+  .tq-profile-grid {
+    grid-template-columns: minmax(72px, 140px) 1fr 1fr;
+    gap-y: 12px;
+    align-content: center;
+  }
+}
+
+.tq-profile-side-label {
+  writing-mode: horizontal-tb;
+  text-align: center;
+  font-size: var(--tq-text-lg);
+  letter-spacing: 4px;
+}
+
+@media (min-width: 640px) {
+  .tq-profile-side-label {
+    writing-mode: vertical-rl;
+    font-size: clamp(24px, 4vw, 40px);
+    letter-spacing: 8px;
+  }
+}
+
+/* 私聊：窄屏上下分栏 */
+.tq-chat-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
+  min-height: 0;
+}
+
+@media (min-width: 768px) {
+  .tq-chat-layout {
+    display: grid;
+    grid-template-columns: minmax(200px, 280px) 1fr;
+  }
+}
+
+.tq-chat-aside {
+  max-height: 38vh;
+  min-height: 120px;
+}
+
+@media (min-width: 768px) {
+  .tq-chat-aside {
+    max-height: none;
+    height: 100%;
+  }
 }

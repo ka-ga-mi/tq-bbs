@@ -166,52 +166,52 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="h-full bg-black/96 p-14px">
-    <div class="h-full flex flex-col border border-[var(--tq-line)] p-14px text-danger">
+  <div class="h-full bg-black/96 p-10px sm:p-14px">
+    <div class="h-full flex flex-col border border-[var(--tq-line)] p-10px sm:p-14px text-danger">
       <div v-if="loading" class="flex flex-1 items-center justify-center text-16px text-muted">加载中...</div>
 
       <template v-else-if="profile">
-        <div class="mb-14px flex items-start justify-between gap-16px">
-          <div class="flex items-center gap-12px">
-            <div class="h-170px w-170px overflow-hidden rounded-full border-[5px] border-black bg-danger/90 p-0">
+        <div class="mb-14px flex flex-col gap-12px sm:flex-row sm:items-start sm:justify-between">
+          <div class="flex flex-col items-center gap-12px sm:flex-row sm:items-center">
+            <div class="tq-avatar-lg shrink-0 overflow-hidden rounded-full border-[5px] border-black bg-danger/90 p-0">
               <img :src="profile.avatarUrl || avatarAssets.nose" alt="用户头像" class="h-full w-full rounded-full object-cover" />
             </div>
-            <div>
-              <h2 class="m-0 text-34px tracking-4px text-danger">[ {{ profile.nickname }} ]</h2>
-              <div v-if="profile.role === 'admin'" class="mt-6px text-20px tracking-2px text-danger/85">管理员</div>
-              <div class="mt-10px flex items-center gap-10px">
-                <button class="tq-btn min-w-180px text-24px" :disabled="blocked" @click="goChat">
+            <div class="text-center sm:text-left">
+              <h2 class="tq-text-hero m-0 tracking-2px sm:tracking-4px text-danger">[ {{ profile.nickname }} ]</h2>
+              <div v-if="profile.role === 'admin'" class="mt-6px tq-text-lg tracking-1px sm:tracking-2px text-danger/85">管理员</div>
+              <div class="mt-10px flex flex-wrap items-center justify-center gap-8px sm:justify-start sm:gap-10px">
+                <button class="tq-btn min-w-140px sm:min-w-180px tq-text-lg" :disabled="blocked" @click="goChat">
                   {{ blocked ? '已拉黑，无法私聊' : '与 TA 私聊' }}
                 </button>
-                <button class="tq-btn-ghost min-w-160px text-24px" :disabled="followLoading" @click="toggleFollow">
+                <button class="tq-btn-ghost min-w-120px sm:min-w-160px tq-text-lg" :disabled="followLoading" @click="toggleFollow">
                   {{ followLoading ? '处理中...' : following ? '取消关注' : '关注 TA' }}
                 </button>
               </div>
             </div>
           </div>
-          <div class="text-danger/80 text-24px">UID：{{ profile.uid }}</div>
+          <div class="text-center tq-text-lg text-danger/80 sm:text-right">UID：{{ profile.uid }}</div>
         </div>
 
-        <div class="mb-18px flex-1 grid grid-cols-[140px_1fr_1fr] content-center gap-y-12px text-danger">
-          <div class="flex items-center justify-center text-40px tracking-8px [writing-mode:vertical-rl]">
+        <div class="tq-profile-grid mb-18px flex-1 text-danger">
+          <div class="tq-profile-side-label flex items-center justify-center">
             用户档案
           </div>
-          <div class="space-y-12px pl-8px text-38px">
+          <div class="space-y-8px sm:space-y-12px pl-0 sm:pl-8px tq-text-stat">
             <div>年龄：{{ profile.age }}</div>
             <div>粉丝：{{ profile.fansCount }}</div>
             <div>发帖：{{ profile.postCount }}</div>
           </div>
-          <div class="space-y-12px text-38px">
+          <div class="space-y-8px sm:space-y-12px tq-text-stat">
             <div>状态：正常</div>
             <div>可私聊：是</div>
           </div>
         </div>
 
-        <div class="mt-12px flex shrink-0 items-end justify-between">
-          <button class="bg-transparent border-none p-0 text-48px tracking-4px text-danger font-700" @click="goBack">
+        <div class="mt-12px flex shrink-0 flex-wrap items-end justify-between gap-12px">
+          <button class="bg-transparent border-none p-0 text-28px sm:text-48px tracking-2px sm:tracking-4px text-danger font-700" @click="goBack">
             &lt; 返回
           </button>
-          <button class="tq-btn-ghost min-w-180px text-24px" :disabled="blockLoading" @click="toggleBlock">
+          <button class="tq-btn-ghost min-w-120px sm:min-w-180px tq-text-lg" :disabled="blockLoading" @click="toggleBlock">
             {{ blockLoading ? '处理中...' : blocked ? '取消拉黑' : '拉黑 TA' }}
           </button>
         </div>

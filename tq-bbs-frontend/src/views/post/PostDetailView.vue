@@ -211,9 +211,9 @@ watch(replies, () => {
 })
 
 onMounted(() => {
-  void loadCurrentUser()
-  void loadBackendPostDetail()
-  void scrollToReplyBottom()
+  void Promise.all([loadCurrentUser(), loadBackendPostDetail()]).then(() => {
+    void scrollToReplyBottom()
+  })
 })
 </script>
 
@@ -222,7 +222,7 @@ onMounted(() => {
     <section class="relative min-h-0 flex flex-1 flex-col bg-[rgba(103,149,166,.22)] px-14px py-12px">
       <div class="relative z-1 mb-14px text-center text-13px text-danger">{{ timeText }}</div>
 
-      <div class="relative z-1 mb-12px text-16px font-700 text-danger">
+      <div class="relative z-1 mb-12px text-14px sm:text-16px font-700 text-danger">
         <span v-if="isLocked" class="mr-8px inline-flex items-center rounded-2px border border-danger/70 bg-danger/20 px-6px py-2px text-12px text-danger">
           已锁帖
         </span>
@@ -233,12 +233,12 @@ onMounted(() => {
         <article
           v-for="reply in replies"
           :key="reply.id"
-          class="flex cursor-pointer items-start gap-10px rounded-6px p-4px"
+          class="flex cursor-pointer items-start gap-8px sm:gap-10px rounded-6px p-4px"
           :class="isMyReply(reply.userName) ? 'justify-end' : 'justify-start'"
           @click="selectedReplyId = selectedReplyId === reply.id ? '' : reply.id"
         >
           <div
-            class="h-62px w-62px shrink-0 overflow-hidden rounded-full border-[5px] border-black bg-danger/90"
+            class="h-48px w-48px sm:h-62px sm:w-62px shrink-0 overflow-hidden rounded-full border-[5px] border-black bg-danger/90"
             :class="[
               isMyReply(reply.userName) ? 'order-2' : 'order-1',
               !reply.userId || reply.userName === '该用户已注销' ? 'cursor-not-allowed opacity-60' : '',
@@ -253,12 +253,12 @@ onMounted(() => {
           </div>
 
           <div class="flex-1" :class="isMyReply(reply.userName) ? 'order-1 text-right' : 'order-2 text-left'">
-            <div class="mb-6px text-24px text-muted">
+            <div class="mb-6px tq-text-lg text-muted">
               {{ reply.userName }}
               <span v-if="selectedReplyId === reply.id" class="ml-8px text-13px text-danger">（已选中）</span>
             </div>
             <div
-              class="inline-block max-w-60% border px-10px py-10px text-left text-20px leading-[1.6] text-black whitespace-pre-line break-words h-auto min-h-fit"
+              class="inline-block max-w-85% sm:max-w-60% border px-8px py-8px sm:px-10px sm:py-10px text-left text-14px sm:text-20px leading-[1.6] text-black whitespace-pre-line break-words h-auto min-h-fit"
               :class="selectedReplyId === reply.id ? 'border-danger bg-danger/75' : 'border-[var(--tq-line)] bg-danger/60'"
             >
               {{ reply.content }}
@@ -283,13 +283,13 @@ onMounted(() => {
         正在回复：{{ selectedReply.userName }}（点击消息可切换/取消）
       </div>
       <p v-if="replyError" class="m-0 mt-8px text-13px text-danger">{{ replyError }}</p>
-      <div class="mt-8px flex items-center justify-between">
-        <button class="bg-transparent border-none p-0 text-40px text-danger font-700" @click="goBack">返回</button>
-        <div class="flex items-center gap-10px">
-          <button v-if="isAdmin" class="tq-btn-ghost rounded-none px-18px py-6px text-18px" @click="toggleLocked">
+      <div class="mt-8px flex flex-wrap items-center justify-between gap-8px">
+        <button class="bg-transparent border-none p-0 text-24px sm:text-40px text-danger font-700" @click="goBack">返回</button>
+        <div class="flex flex-wrap items-center gap-8px sm:gap-10px">
+          <button v-if="isAdmin" class="tq-btn-ghost rounded-none px-12px py-6px text-14px sm:text-18px" @click="toggleLocked">
             {{ isLocked ? '解除锁帖' : '锁帖' }}
           </button>
-          <button class="tq-btn rounded-none px-22px py-6px text-24px" :disabled="isLocked" @click="submitReply">发送</button>
+          <button class="tq-btn rounded-none px-16px py-6px text-16px sm:text-24px" :disabled="isLocked" @click="submitReply">发送</button>
         </div>
       </div>
     </footer>

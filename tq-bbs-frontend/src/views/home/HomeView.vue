@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { homePosts, type HomePostItem } from '../../mocks/homePosts'
 import { avatarAssets, resolveDisplayAvatarUrl } from '../../mocks/userProfile'
 import { apiRequest } from '../../api/client'
+import { deferIdle } from '../../utils/defer'
 
 const AUTH_STORAGE_KEY = 'tq_bbs_auth'
 const ITEMS_PER_PAGE = 3
@@ -54,6 +55,7 @@ const hasFollowPostReplyAlert = ref(false)
 const unreadFollowPostReplyMap = ref<Record<string, boolean>>({})
 const latestFollowPostReplyAtMap = ref<Record<string, string>>({})
 const posts = ref<HomePostItem[]>([...homePosts])
+const postsLoading = ref(false)
 const deletingPostId = ref<string>('')
 const deleteConfirmVisible = ref(false)
 const pendingDeletePostId = ref('')
@@ -347,15 +349,22 @@ const loadCurrentUser = async () => {
   }
 }
 
-const restoreAuth = () => {
+const restoreAuth = async () => {
   const raw = localStorage.getItem(AUTH_STORAGE_KEY)
-  if (!raw) return
-  void loadCurrentUser().then((ok) => {
-    if (!ok) localStorage.removeItem(AUTH_STORAGE_KEY)
-  })
+  if (!raw) return false
+  const ok = await loadCurrentUser()
+  if (!ok) localStorage.removeItem(AUTH_STORAGE_KEY)
+  return ok
+}
+
+const refreshSecondaryData = () => {
+  if (!currentUser.value?.id) return
+  void loadChatAlertState()
+  void loadMyPostReplyAlert()
 }
 
 const loadBackendPosts = async () => {
+  postsLoading.value = true
   try {
     const data = await apiRequest<ApiPostItem[]>('/api/posts')
     if (!Array.isArray(data) || data.length === 0) return
@@ -375,6 +384,8 @@ const loadBackendPosts = async () => {
     )
   } catch {
     // Keep local mock posts when backend is unavailable.
+  } finally {
+    postsLoading.value = false
   }
 }
 
@@ -504,15 +515,16 @@ const loadFollowPostReplyAlert = async () => {
     }
     const followingSet = new Set(followingNicknames.value)
 
-    const allPosts = await apiRequest<Array<{ id: string; authorName: string }>>('/api/posts')
-    const followPosts = (Array.isArray(allPosts) ? allPosts : []).filter((p) => followingSet.has(p.authorName))
+    const followPosts = posts.value
+      .filter((p) => followingSet.has(p.authorName))
+      .slice(0, 8)
 
     const readState = getFollowPostReplyReadState()
     const myRead = readState[userId] ?? {}
     const nextUnreadMap: Record<string, boolean> = {}
     const nextLatestMap: Record<string, string> = {}
 
-    const batchSize = 6
+    const batchSize = 4
     for (let i = 0; i < followPosts.length; i += batchSize) {
       const batch = followPosts.slice(i, i + batchSize)
       const details = await Promise.all(
@@ -800,12 +812,11 @@ watch(totalPages, () => {
 
 watch(
   () => currentUser.value?.id,
-  () => {
-    void loadChatAlertState()
-    void loadMyPostReplyAlert()
+  (userId) => {
+    if (!userId) return
     followingLoaded.value = false
     void loadFollowing()
-    void loadFollowPostReplyAlert()
+    deferIdle(refreshSecondaryData)
   },
 )
 
@@ -815,11 +826,12 @@ onMounted(() => {
     activeType.value = typeFromQuery as (typeof postTypes)[number]
     currentPage.value = 1
   }
-  restoreAuth()
+
   void loadBackendPosts()
-  void loadChatAlertState()
-  void loadMyPostReplyAlert()
-  void loadFollowPostReplyAlert()
+  void restoreAuth().then((loggedIn) => {
+    if (loggedIn) deferIdle(refreshSecondaryData)
+  })
+
   window.addEventListener('tq_bbs_post_replied', handlePostReplied)
   if (String(route.query.login || '').trim() === '1') {
     showLoginModal()
@@ -833,49 +845,49 @@ onUnmounted(() => {
 
 <template>
   <div class="tq-panel relative h-full flex flex-col overflow-hidden">
-    <header class="h-40% shrink-0 border-b border-[var(--tq-line)] px-14px py-12px">
-      <div class="flex h-full items-start justify-between gap-16px">
-        <div class="min-w-0 max-w-55% truncate pt-4px text-14px text-danger md:text-16px">用户：{{ headerUserName }}　UID：{{ headerUid }}</div>
-        <div class="w-45%">
-          <div class="mb-10px flex gap-0">
-            <input
-              v-model="searchKeyword"
-              class="tq-input rounded-r-none py-8px text-danger"
-              placeholder="搜索"
-              @keydown.enter="doSearch"
-            />
-            <button class="tq-btn rounded-l-none px-16px py-8px whitespace-nowrap min-w-64px" @click="doSearch">搜索</button>
-          </div>
-          <div class="mt-30px flex gap-10px">
+    <header class="tq-home-header shrink-0 border-b border-[var(--tq-line)] px-14px py-12px">
+      <div class="tq-home-header__info min-w-0 truncate pt-4px text-danger">
+        用户：{{ headerUserName }}　UID：{{ headerUid }}
+      </div>
+      <div class="tq-home-header__actions">
+        <div class="mb-10px flex gap-0">
+          <input
+            v-model="searchKeyword"
+            class="tq-input min-w-0 flex-1 rounded-r-none py-8px text-danger"
+            placeholder="搜索"
+            @keydown.enter="doSearch"
+          />
+          <button class="tq-btn shrink-0 rounded-l-none px-12px py-8px whitespace-nowrap sm:px-16px" @click="doSearch">搜索</button>
+        </div>
+        <div class="mt-16px flex flex-wrap items-end justify-end gap-10px sm:mt-30px">
           <button
             type="button"
-            class="ml-auto h-180px w-180px overflow-hidden rounded-full border-[5px] border-black bg-danger/90 p-0 text-40px font-700 text-black"
+            class="tq-avatar-xl ml-auto shrink-0 overflow-hidden rounded-full border-[5px] border-black bg-danger/90 p-0"
             :title="isLoggedIn ? '进入档案' : '点击登录'"
             @click="handleCircleClick"
           >
-            <img :src="circleAvatarUrl" alt="用户头像" class="h-full w-full rounded-full object-cover" />
+            <img :src="circleAvatarUrl" alt="用户头像" class="h-full w-full rounded-full object-cover" loading="lazy" decoding="async" />
           </button>
-            <button class="tq-btn relative min-w-120px tq-text h-40px self-end" @click="openChatPage">
-              私聊
-              <span
-                v-if="hasNewChat"
-                class="pointer-events-none absolute -right-8px -top-8px inline-flex h-18px min-w-18px items-center justify-center rounded-2px bg-[#ff2a2a] px-4px text-12px font-800 leading-none text-black"
-                aria-label="私聊有新消息"
-              >!</span>
-            </button>
-       </div>
+          <button class="tq-btn relative min-w-90px sm:min-w-120px h-40px shrink-0" @click="openChatPage">
+            私聊
+            <span
+              v-if="hasNewChat"
+              class="pointer-events-none absolute -right-8px -top-8px inline-flex h-18px min-w-18px items-center justify-center rounded-2px bg-[#ff2a2a] px-4px text-12px font-800 leading-none text-black"
+              aria-label="私聊有新消息"
+            >!</span>
+          </button>
         </div>
       </div>
     </header>
 
-    <div class="h-60% flex min-h-0 flex-col">
+    <div class="tq-home-body flex min-h-0 flex-col">
       <section class="relative min-h-0 flex-1 bg-[rgba(103,149,166,.22)] px-10px py-10px">
-        <nav class="border-b border-[var(--tq-line)] px-12px py-10px">
-          <div class="flex gap-20px ml-100px">
+        <nav class="border-b border-[var(--tq-line)] px-8px py-8px sm:px-12px sm:py-10px">
+          <div class="tq-home-tabs">
             <button
               v-for="type in postTypes"
               :key="type"
-              class="relative py-2px px-30px"
+              class="relative px-16px py-2px sm:px-30px"
               :class="activeType === type ? 'tq-btn' : 'tq-btn-ghost'"
               @click="switchType(type)"
             >
@@ -890,18 +902,34 @@ onUnmounted(() => {
         </nav>
 
        <div class="relative z-1 mt-8px h-[calc(100%-58px)] overflow-hidden pr-2px flex flex-col gap-8px">
+          <div v-if="postsLoading" class="flex h-full flex-col gap-8px">
+            <div
+              v-for="n in 3"
+              :key="n"
+              class="min-h-72px flex-1 animate-pulse border border-[var(--tq-line)] bg-[rgba(0,0,0,.24)] p-10px sm:min-h-0 sm:h-1/3"
+            >
+              <div class="flex items-center gap-10px">
+                <div class="tq-avatar-md shrink-0 rounded-full bg-danger/25" />
+                <div class="h-16px flex-1 rounded-2px bg-danger/20" />
+              </div>
+            </div>
+          </div>
+          <template v-else>
           <article
     v-for="item in pagedPosts"
     :key="item.id"
-    class="group relative h-1/3 min-h-0 flex cursor-pointer items-center gap-10px border border-[var(--tq-line)] bg-[rgba(0,0,0,.24)] p-10px transition hover:bg-[rgba(180,20,20,.18)]"
+    class="group relative min-h-0 flex flex-col sm:flex-row cursor-pointer items-stretch sm:items-center gap-8px sm:gap-10px border border-[var(--tq-line)] bg-[rgba(0,0,0,.24)] p-10px transition hover:bg-[rgba(180,20,20,.18)] sm:h-1/3"
     @click="openPost(item.id)"
   >
+            <div class="flex min-w-0 flex-1 items-center gap-10px">
             <img
               :src="resolveDisplayAvatarUrl(item.avatarUrl)"
               alt="帖子头像"
-              class="h-52px w-52px shrink-0 rounded-full border-[5px] border-black object-cover"
+              class="tq-avatar-md shrink-0 rounded-full border-[5px] border-black object-cover"
+              loading="lazy"
+              decoding="async"
             />
-            <h3 class="m-0 min-w-0 flex-1 truncate pr-[300px] text-18px font-700 text-danger">
+            <h3 class="m-0 min-w-0 flex-1 truncate text-[var(--tq-text-md)] font-700 text-danger sm:pr-[280px]">
               <span
                 v-if="item.isPinned"
                 class="mr-6px inline-flex items-center rounded-2px border border-danger/60 bg-danger/20 px-4px py-1px text-12px tracking-1px text-danger"
@@ -915,35 +943,39 @@ onUnmounted(() => {
                 aria-label="该帖子有新回复"
               >!</span>
             </h3>
+            </div>
 
+            <div class="tq-post-row__actions" @click.stop>
             <button
               v-if="isAdmin"
-              class="absolute right-210px top-10px opacity-0 pointer-events-none transition group-hover:opacity-100 group-hover:pointer-events-auto tq-btn-ghost px-12px py-6px text-18px text-danger"
+              class="tq-btn-ghost px-10px py-4px sm:px-12px sm:py-6px text-danger"
               :disabled="pinningPostId === item.id"
-              @click.stop="togglePinned(item)"
+              @click="togglePinned(item)"
             >
               {{ pinningPostId === item.id ? '处理中...' : item.isPinned ? '取消置顶' : '置顶' }}
             </button>
 
             <button
               v-if="isAdmin"
-              class="absolute right-90px top-10px opacity-0 pointer-events-none transition group-hover:opacity-100 group-hover:pointer-events-auto tq-btn-ghost px-12px py-6px text-18px text-danger"
+              class="tq-btn-ghost px-10px py-4px sm:px-12px sm:py-6px text-danger"
               :disabled="featuringPostId === item.id"
-              @click.stop="toggleFeatured(item)"
+              @click="toggleFeatured(item)"
             >
               {{ featuringPostId === item.id ? '处理中...' : item.isFeatured ? '取消精品' : '加精' }}
             </button>
 
             <button
               v-if="isLoggedIn && currentUser && (item.authorName === currentUser.nickname || isAdmin)"
-              class="absolute right-10px top-10px opacity-0 pointer-events-none transition group-hover:opacity-100 group-hover:pointer-events-auto tq-btn-ghost px-12px py-6px text-18px text-danger"
+              class="tq-btn-ghost px-10px py-4px sm:px-12px sm:py-6px text-danger"
               :disabled="deletingPostId === item.id"
-              @click.stop="deletePost(item.id)"
+              @click="deletePost(item.id)"
             >
               {{ deletingPostId === item.id ? '删除中...' : '删除' }}
             </button>
+            </div>
           </article>
-          <div v-if="pagedPosts.length === 0" class="flex h-full items-center justify-center text-14px text-muted">
+          </template>
+          <div v-if="!postsLoading && pagedPosts.length === 0" class="flex h-full items-center justify-center text-14px text-muted">
             {{
               activeType === '我的' && !isLoggedIn
                 ? '请先登录后查看“我的帖子”'
@@ -959,23 +991,23 @@ onUnmounted(() => {
         <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle,rgba(255,255,255,.08),transparent_48%)]" />
       </section>
 
-      <footer class="shrink-0 flex items-center justify-between border-t border-[var(--tq-line)] bg-[rgba(214,234,242,.25)] px-12px py-10px">
+      <footer class="shrink-0 flex flex-wrap items-center justify-between gap-8px border-t border-[var(--tq-line)] bg-[rgba(214,234,242,.25)] px-10px py-8px sm:px-12px sm:py-10px">
         <button
-          class="text-28px leading-none text-danger"
+          class="text-22px sm:text-28px leading-none text-danger"
           :class="{ 'opacity-40 cursor-not-allowed': currentPage === 1 }"
           @click="prevPage"
         >
           &lt;
         </button>
-        <div class="text-18px tracking-6px text-danger">{{ currentPage }} / {{ totalPages }}</div>
+        <div class="text-14px sm:text-18px tracking-2px sm:tracking-6px text-danger">{{ currentPage }} / {{ totalPages }}</div>
         <button
-          class="text-28px leading-none text-danger"
+          class="text-22px sm:text-28px leading-none text-danger"
           :class="{ 'opacity-40 cursor-not-allowed': currentPage === totalPages }"
           @click="nextPage"
         >
           &gt;
         </button>
-        <button class="tq-btn ml-16px min-w-120px" @click="showPostModal">发帖</button>
+        <button class="tq-btn ml-auto min-w-90px sm:min-w-120px" @click="showPostModal">发帖</button>
       </footer>
     </div>
 

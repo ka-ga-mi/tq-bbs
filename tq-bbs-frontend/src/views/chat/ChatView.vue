@@ -387,23 +387,24 @@ watch([activeContactId, activeMessages], () => {
   void scrollToBottom()
 })
 
-onMounted(async () => {
-  await loadCurrentUser()
-  void loadConversations()
-  if (singleTargetMode.value && targetContactId.value) {
-    activeContactId.value = targetUserId.value || targetContactId.value
-    void loadBackendMessages()
-  }
+onMounted(() => {
+  void loadCurrentUser().then(() => {
+    void loadConversations()
+    if (singleTargetMode.value && targetContactId.value) {
+      activeContactId.value = targetUserId.value || targetContactId.value
+      void loadBackendMessages()
+    }
+  })
 })
 </script>
 
 <template>
-  <div class="tq-panel h-full min-h-0 border border-[var(--tq-line)] bg-black/96 p-10px">
-    <div class="h-full min-h-0 grid grid-cols-[280px_1fr] gap-10px">
-      <aside class="h-full min-h-0 border border-[var(--tq-line)]">
-        <div class="flex h-68px items-center justify-center border-b border-[var(--tq-line)] text-30px text-danger">⌃</div>
+  <div class="tq-panel h-full min-h-0 border border-[var(--tq-line)] bg-black/96 p-8px sm:p-10px">
+    <div class="tq-chat-layout">
+      <aside class="tq-chat-aside min-h-0 border border-[var(--tq-line)]">
+        <div class="flex h-48px sm:h-68px items-center justify-center border-b border-[var(--tq-line)] text-24px sm:text-30px text-danger">⌃</div>
 
-        <div class="h-[calc(100%-136px)] overflow-auto">
+        <div class="h-[calc(100%-96px)] sm:h-[calc(100%-136px)] overflow-auto">
           <button
             v-for="contact in currentChatContacts"
             :key="contact.id"
@@ -433,11 +434,11 @@ onMounted(async () => {
           <div v-if="!currentChatContacts.length" class="p-12px text-13px text-muted">当前账号暂无私聊联系人</div>
         </div>
 
-        <div class="flex h-68px items-center justify-center border-t border-[var(--tq-line)] text-30px text-danger">⌄</div>
+        <div class="flex h-48px sm:h-68px items-center justify-center border-t border-[var(--tq-line)] text-24px sm:text-30px text-danger">⌄</div>
       </aside>
 
-      <section class="h-full min-h-0 flex flex-col border border-[var(--tq-line)]">
-        <header class="flex h-70px items-center border-b border-[var(--tq-line)] px-16px text-42px text-danger">
+      <section class="min-h-0 flex h-full flex-col border border-[var(--tq-line)]">
+        <header class="flex h-56px sm:h-70px items-center border-b border-[var(--tq-line)] px-12px sm:px-16px text-24px sm:text-42px text-danger">
           <span class="max-w-full truncate">【{{ activeContactName }}】</span>
         </header>
 
@@ -449,15 +450,15 @@ onMounted(async () => {
             :class="isMine(message) ? 'justify-end' : 'justify-start'"
           >
             <div
-              class="flex h-62px w-62px shrink-0 items-center justify-center overflow-hidden rounded-full border-[5px] border-black bg-black/70 text-14px text-danger"
+              class="flex h-48px w-48px sm:h-62px sm:w-62px shrink-0 items-center justify-center overflow-hidden rounded-full border-[5px] border-black bg-black/70 text-14px text-danger"
               :class="isMine(message) ? 'order-2' : 'order-1'"
             >
               <img :src="displayAvatar(message)" alt="消息头像" class="h-full w-full rounded-full object-cover" />
             </div>
             <div :class="isMine(message) ? 'order-1 w-full flex flex-col items-end' : 'order-2 w-full flex flex-col items-start'">
-              <div class="mb-6px max-w-80% truncate text-18px text-muted">{{ displaySender(message) }}</div>
+              <div class="mb-6px max-w-80% truncate tq-text-md text-muted">{{ displaySender(message) }}</div>
               <div
-                class="w-fit max-w-80% whitespace-pre-wrap break-words border border-[var(--tq-line)] px-16px py-10px text-left text-24px leading-[1.6] text-black"
+                class="w-fit max-w-85% sm:max-w-80% whitespace-pre-wrap break-words border border-[var(--tq-line)] px-12px py-8px sm:px-16px sm:py-10px text-left text-16px sm:text-24px leading-[1.6] text-black"
                 :class="isMine(message) ? 'bg-danger/75' : 'bg-danger/90'"
               >
                 {{ message.content }}
@@ -473,9 +474,9 @@ onMounted(async () => {
             placeholder="在这里输入回复内容..."
             @keydown.enter.exact.prevent="sendReply"
           />
-          <div class="mt-8px flex items-center justify-between">
-            <button class="bg-transparent border-none p-0 text-40px text-danger font-700" @click="goHome">返回</button>
-            <button class="tq-btn rounded-none px-22px py-6px text-24px" @click="sendReply">发送</button>
+          <div class="mt-8px flex flex-wrap items-center justify-between gap-8px">
+            <button class="bg-transparent border-none p-0 text-24px sm:text-40px text-danger font-700" @click="goHome">返回</button>
+            <button class="tq-btn rounded-none px-16px py-6px text-16px sm:text-24px" @click="sendReply">发送</button>
           </div>
           <p v-if="replyError" class="m-0 mt-8px text-13px text-danger">{{ replyError }}</p>
         </footer>

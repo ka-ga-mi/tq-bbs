@@ -15,30 +15,17 @@ const currentTab = computed(() => route.name)
 </script>
 
 <template>
-  <main class="tq-page px-10px py-20px">
-    <div class="mx-auto h-90vh w-90vw max-w-1600px">
-      <!--
-      <header class="mb-16px tq-panel px-16px py-14px">
-        <div class="flex items-center justify-between gap-12px">
-          <h1 class="m-0 text-18px text-danger tracking-1px">TQ BBS</h1>
-          <nav class="flex flex-wrap items-center gap-8px">
-            <RouterLink
-              v-for="tab in tabs"
-              :key="tab.name"
-              :to="tab.to"
-              class="tq-tab min-w-74px text-center"
-              :class="{ 'tq-tab-active': currentTab === tab.name }"
-            >
-              {{ tab.label }}
-            </RouterLink>
-          </nav>
-     
-        </div>
-      </header>
-     -->
-     
+  <main class="tq-page">
+    <div class="tq-shell">
       <section class="mx-auto h-full w-full">
-        <RouterView />
+        <RouterView v-slot="{ Component }">
+          <Suspense>
+            <component :is="Component" />
+            <template #fallback>
+              <div class="tq-panel flex h-full items-center justify-center text-14px text-muted">页面加载中...</div>
+            </template>
+          </Suspense>
+        </RouterView>
       </section>
     </div>
   </main>
