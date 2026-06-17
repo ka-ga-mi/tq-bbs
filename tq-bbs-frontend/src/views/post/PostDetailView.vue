@@ -19,10 +19,13 @@ const backendDetail = ref<{
   isLocked?: boolean
   replies: Array<{ id: string; userId?: string; userName: string; avatarUrl: string; content: string }>
 } | null>(null)
+const detailLoading = ref(true)
+const detailLoadFailed = ref(false)
 
 const postId = computed(() => String(route.params.id || ''))
-const currentPost = computed(() => homePosts.find((item) => item.id === postId.value))
-const detail = computed(() => postDetails.find((item) => item.id === postId.value))
+const useDevMock = import.meta.env.DEV
+const currentPost = computed(() => (useDevMock ? homePosts.find((item) => item.id === postId.value) : undefined))
+const detail = computed(() => (useDevMock ? postDetails.find((item) => item.id === postId.value) : undefined))
 const POST_REPLY_READ_KEY = 'tq_bbs_post_reply_read_state'
 const POST_FOLLOW_REPLY_READ_KEY = 'tq_bbs_follow_post_reply_read_state'
 
@@ -47,24 +50,23 @@ const upsertReadState = (readKey: string) => {
 }
 
 const replies = computed(() => {
+  if (detailLoading.value) return []
   if (backendDetail.value) return backendDetail.value.replies
-  if (detail.value?.replies?.length) return detail.value.replies
-  return [
-    {
-      id: 'fallback-reply',
-      userName: '系统',
-      avatarUrl: '',
-      content: '该帖子暂无详情数据，后续可在 mocks/postDetails.ts 中补充。',
-    },
-  ]
+  if (useDevMock && detail.value?.replies?.length) return detail.value.replies
+  return []
 })
 const timeText = computed(() => {
+  if (detailLoading.value) return '加载中...'
   if (backendDetail.value?.createdAt) return backendDetail.value.createdAt.slice(0, 16).replace('T', ' ')
-  return detail.value?.time ?? '未记录时间'
+  if (useDevMock && detail.value?.time) return detail.value.time
+  return '未记录时间'
 })
 const titleText = computed(() => {
+  if (detailLoading.value) return '加载中...'
   if (backendDetail.value?.title) return backendDetail.value.title
-  return currentPost.value?.title ?? `帖子详情（${postId.value || 'unknown'}）`
+  if (useDevMock && currentPost.value?.title) return currentPost.value.title
+  if (detailLoadFailed.value) return '帖子加载失败'
+  return `帖子详情（${postId.value || 'unknown'}）`
 })
 const isLocked = computed(() => Boolean(backendDetail.value?.isLocked))
 const isAdmin = computed(() => currentUser.value?.role === 'admin')
@@ -96,6 +98,9 @@ const openUserProfile = (reply: { userId?: string; userName: string }) => {
 }
 const loadBackendPostDetail = async () => {
   if (!postId.value) return
+  detailLoading.value = true
+  detailLoadFailed.value = false
+  backendDetail.value = null
   try {
     const data = await apiRequest<{
       id: string
@@ -118,7 +123,10 @@ const loadBackendPostDetail = async () => {
       })),
     }
   } catch {
+    detailLoadFailed.value = true
     backendDetail.value = null
+  } finally {
+    detailLoading.value = false
   }
 }
 
@@ -159,8 +167,8 @@ const submitReply = async () => {
     replyError.value = '请输入回帖内容'
     return
   }
-  if (!detail.value && !backendDetail.value) {
-    replyError.value = '当前帖子暂无回帖入口'
+  if (!backendDetail.value && !(useDevMock && detail.value)) {
+    replyError.value = detailLoadFailed.value ? '帖子加载失败，请返回后重试' : '当前帖子暂无回帖入口'
     return
   }
 
@@ -230,9 +238,18 @@ onMounted(() => {
       </div>
 
       <div ref="replyListRef" class="relative z-1 min-h-0 flex-1 space-y-14px overflow-auto pr-2px">
-        <article
-          v-for="reply in replies"
-          :key="reply.id"
+        <div v-if="detailLoading" class="space-y-14px">
+          <div v-for="n in 3" :key="n" class="flex animate-pulse items-start gap-10px">
+            <div class="h-48px w-48px shrink-0 rounded-full bg-danger/25" />
+            <div class="h-48px flex-1 rounded-4px bg-danger/15" />
+          </div>
+        </div>
+        <p v-else-if="detailLoadFailed" class="m-0 text-center text-14px text-muted">帖子加载失败，请检查网络后刷新</p>
+        <p v-else-if="replies.length === 0" class="m-0 text-center text-14px text-muted">暂无回帖，来抢沙发吧</p>
+        <template v-else>
+          <article
+            v-for="reply in replies"
+            :key="reply.id"
           class="flex cursor-pointer items-start gap-8px sm:gap-10px rounded-6px p-4px"
           :class="isMyReply(reply.userName) ? 'justify-end' : 'justify-start'"
           @click="selectedReplyId = selectedReplyId === reply.id ? '' : reply.id"
@@ -265,6 +282,7 @@ onMounted(() => {
             </div>
           </div>
         </article>
+        </template>
 
       </div>
 

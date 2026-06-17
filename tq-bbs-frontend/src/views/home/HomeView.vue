@@ -54,8 +54,9 @@ const POST_FOLLOW_REPLY_READ_KEY = 'tq_bbs_follow_post_reply_read_state'
 const hasFollowPostReplyAlert = ref(false)
 const unreadFollowPostReplyMap = ref<Record<string, boolean>>({})
 const latestFollowPostReplyAtMap = ref<Record<string, string>>({})
-const posts = ref<HomePostItem[]>([...homePosts])
-const postsLoading = ref(false)
+const posts = ref<HomePostItem[]>([])
+const postsLoading = ref(true)
+const postsLoadFailed = ref(false)
 const deletingPostId = ref<string>('')
 const deleteConfirmVisible = ref(false)
 const pendingDeletePostId = ref('')
@@ -365,25 +366,27 @@ const refreshSecondaryData = () => {
 
 const loadBackendPosts = async () => {
   postsLoading.value = true
+  postsLoadFailed.value = false
   try {
     const data = await apiRequest<ApiPostItem[]>('/api/posts')
-    if (!Array.isArray(data) || data.length === 0) return
-    posts.value.splice(
-      0,
-      posts.value.length,
-      ...data.map((item) => ({
-        id: item.id,
-        type: item.isFeatured ? '精品' : item.type || '主页',
-        isFeatured: Boolean(item.isFeatured),
-        isPinned: Boolean(item.isPinned),
-        tag: item.tag || '讨论',
-        title: item.title || '未命名帖子',
-        authorName: item.authorName || '匿名用户',
-        avatarUrl: resolveDisplayAvatarUrl(item.avatarUrl),
-      })),
-    )
+    const list = Array.isArray(data) ? data : []
+    posts.value = list.map((item) => ({
+      id: item.id,
+      type: item.isFeatured ? '精品' : item.type || '主页',
+      isFeatured: Boolean(item.isFeatured),
+      isPinned: Boolean(item.isPinned),
+      tag: item.tag || '讨论',
+      title: item.title || '未命名帖子',
+      authorName: item.authorName || '匿名用户',
+      avatarUrl: resolveDisplayAvatarUrl(item.avatarUrl),
+    }))
   } catch {
-    // Keep local mock posts when backend is unavailable.
+    postsLoadFailed.value = true
+    if (import.meta.env.DEV) {
+      posts.value = [...homePosts]
+    } else {
+      posts.value = []
+    }
   } finally {
     postsLoading.value = false
   }
@@ -977,13 +980,15 @@ onUnmounted(() => {
           </template>
           <div v-if="!postsLoading && pagedPosts.length === 0" class="flex h-full items-center justify-center text-14px text-muted">
             {{
-              activeType === '我的' && !isLoggedIn
-                ? '请先登录后查看“我的帖子”'
-                : activeType === '关注' && !isLoggedIn
-                  ? '请先登录后查看“关注”帖子'
-                : searchKeywordApplied
-                  ? '未搜索到相关帖子'
-                  : '当前分类暂无帖子'
+              postsLoadFailed
+                ? '帖子加载失败，请检查网络或稍后刷新'
+                : activeType === '我的' && !isLoggedIn
+                  ? '请先登录后查看“我的帖子”'
+                  : activeType === '关注' && !isLoggedIn
+                    ? '请先登录后查看“关注”帖子'
+                    : searchKeywordApplied
+                      ? '未搜索到相关帖子'
+                      : '当前分类暂无帖子'
             }}
           </div>
         </div>
