@@ -890,7 +890,7 @@ onUnmounted(() => {
             <button
               v-for="type in postTypes"
               :key="type"
-              class="relative px-16px py-2px sm:px-30px"
+              class="relative"
               :class="activeType === type ? 'tq-btn' : 'tq-btn-ghost'"
               @click="switchType(type)"
             >
@@ -951,7 +951,7 @@ onUnmounted(() => {
             <div class="tq-post-row__actions" @click.stop>
             <button
               v-if="isAdmin"
-              class="tq-btn-ghost px-10px py-4px sm:px-12px sm:py-6px text-danger"
+              class="tq-btn-ghost px-10px py-4px sm:px-12px sm:py-6px"
               :disabled="pinningPostId === item.id"
               @click="togglePinned(item)"
             >
@@ -960,7 +960,7 @@ onUnmounted(() => {
 
             <button
               v-if="isAdmin"
-              class="tq-btn-ghost px-10px py-4px sm:px-12px sm:py-6px text-danger"
+              class="tq-btn-ghost px-10px py-4px sm:px-12px sm:py-6px"
               :disabled="featuringPostId === item.id"
               @click="toggleFeatured(item)"
             >
@@ -969,7 +969,7 @@ onUnmounted(() => {
 
             <button
               v-if="isLoggedIn && currentUser && (item.authorName === currentUser.nickname || isAdmin)"
-              class="tq-btn-ghost px-10px py-4px sm:px-12px sm:py-6px text-danger"
+              class="tq-btn-ghost px-10px py-4px sm:px-12px sm:py-6px"
               :disabled="deletingPostId === item.id"
               @click="deletePost(item.id)"
             >

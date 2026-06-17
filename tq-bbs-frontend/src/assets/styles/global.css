@@ -195,21 +195,49 @@ a {
   min-height: 0;
 }
 
-/* 分类 Tab：窄屏可换行、去大左边距 */
+/* 分类 Tab：窄屏五列单行；宽屏可换行、去大左边距 */
 .tq-home-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 12px;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
   margin-left: 0;
-  justify-content: center;
+  width: 100%;
+}
+
+.tq-home-tabs button {
+  min-width: 0;
+  padding: 5px 2px;
+  font-size: 11px;
+  line-height: 1.25;
+  white-space: nowrap;
 }
 
 @media (min-width: 768px) {
   .tq-home-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    grid-template-columns: unset;
     gap: 20px;
     margin-left: 100px;
-    justify-content: flex-start;
+    width: auto;
   }
+
+  .tq-home-tabs button {
+    padding: 2px 30px;
+    font-size: 14px;
+  }
+}
+
+/* 按钮文字统一白色，避免被 text-danger 等覆盖 */
+.tq-btn,
+.tq-btn-ghost {
+  color: #fff;
+}
+
+.tq-post-row__actions .tq-btn-ghost {
+  font-size: var(--tq-text-sm);
+  padding: 4px 10px;
+  color: #fff;
 }
 
 /* 帖子行：窄屏操作按钮常显（触摸设备无 hover） */
@@ -219,11 +247,6 @@ a {
   gap: 6px;
   margin-top: 8px;
   width: 100%;
-}
-
-.tq-post-row__actions .tq-btn-ghost {
-  font-size: var(--tq-text-sm);
-  padding: 4px 10px;
 }
 
 @media (min-width: 768px) {
