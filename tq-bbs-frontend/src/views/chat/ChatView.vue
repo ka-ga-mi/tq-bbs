@@ -265,58 +265,99 @@ const loadConversations = async () => {
   }
 }
 
+type RawChatMessage = { id: string; senderId: string; content: string }
+
+const isBackendContactId = (contactId: string) =>
+  Boolean(contactId) && !contactId.startsWith('c-') && !contactId.startsWith('route-target-')
+
+const mapRawMessages = (
+  items: RawChatMessage[],
+  contactName: string,
+  contactAvatar: string,
+): ChatMessage[] =>
+  items.map((item) => ({
+    id: item.id,
+    from: item.senderId === currentUserId.value ? 'me' : 'other',
+    sender: item.senderId === currentUserId.value ? myDisplayName.value : contactName,
+    avatarUrl: item.senderId === currentUserId.value ? myAvatarUrl.value : contactAvatar,
+    content: item.content || '',
+  }))
+
 const loadBackendMessages = async () => {
   if (!targetUserId.value) {
     backendMessages.value = []
     return
   }
   try {
-    const data = await apiRequest<Array<{ id: string; senderId: string; content: string }>>(
+    const data = await apiRequest<RawChatMessage[]>(
       `/api/chat/messages/${encodeURIComponent(targetUserId.value)}`,
       { auth: true },
     )
-    backendMessages.value = (Array.isArray(data) ? data : []).map((item) => ({
-      id: item.id,
-      from: item.senderId === currentUserId.value ? 'me' : 'other',
-      sender: item.senderId === currentUserId.value ? myDisplayName.value : targetName.value || '对方',
-      avatarUrl: item.senderId === currentUserId.value ? myAvatarUrl.value : resolveDisplayAvatarUrl(targetAvatar.value),
-      content: item.content || '',
-    }))
+    backendMessages.value = mapRawMessages(
+      Array.isArray(data) ? data : [],
+      targetName.value || '对方',
+      resolveDisplayAvatarUrl(targetAvatar.value),
+    )
   } catch (error) {
     replyError.value = error instanceof Error ? error.message : '加载私聊记录失败'
     backendMessages.value = []
   }
 }
 
+const loadActiveContactMessages = async () => {
+  if (singleTargetMode.value) {
+    await loadBackendMessages()
+    return
+  }
+
+  const contactId = activeContactId.value
+  if (!isBackendContactId(contactId)) return
+
+  const contact = currentChatContacts.value.find((item) => item.id === contactId)
+  const data = await apiRequest<RawChatMessage[]>(`/api/chat/messages/${encodeURIComponent(contactId)}`, {
+    auth: true,
+  })
+  const messages = mapRawMessages(Array.isArray(data) ? data : [], contact?.name || '对方', contact?.avatarUrl || '')
+
+  if (!backendChatData.value) return
+  const threadIndex = backendChatData.value.threads.findIndex((item) => item.contactId === contactId)
+  if (threadIndex < 0) return
+
+  backendChatData.value.threads[threadIndex] = {
+    ...backendChatData.value.threads[threadIndex],
+    messages,
+  }
+}
+
 // Lightweight polling: keep chat view updated without requiring navigation refresh.
-// (We don't have WebSocket/SSE in the current backend.)
 let chatPollTimer: ReturnType<typeof window.setInterval> | undefined
 let chatPollInFlight = false
 const CHAT_POLL_INTERVAL_MS = 2500
 
-const startChatPolling = () => {
-  if (chatPollTimer) return
-  chatPollTimer = window.setInterval(async () => {
-    if (chatPollInFlight) return
+const pollChatUpdates = async () => {
+  if (document.hidden || chatPollInFlight) return
+
+  chatPollInFlight = true
+  try {
+    if (!currentUserId.value) await loadCurrentUser()
     if (!currentUserId.value) return
 
-    chatPollInFlight = true
-    try {
-      if (singleTargetMode.value) {
-        if (!targetUserId.value) return
-        const prevLastId = backendMessages.value.at(-1)?.id || ''
-        await loadBackendMessages()
-        const nextLastId = backendMessages.value.at(-1)?.id || ''
-        if (nextLastId && nextLastId !== prevLastId) void scrollToBottom()
-      } else {
-        await loadConversations()
-      }
-    } catch {
-      // Ignore polling errors; the next tick may recover.
-    } finally {
-      chatPollInFlight = false
-    }
-  }, CHAT_POLL_INTERVAL_MS)
+    const prevLastId = activeMessages.value.at(-1)?.id || ''
+    await loadActiveContactMessages()
+    if (!singleTargetMode.value) await loadConversations()
+    const nextLastId = activeMessages.value.at(-1)?.id || ''
+    if (nextLastId && nextLastId !== prevLastId) void scrollToBottom()
+  } catch {
+    // Ignore polling errors; the next tick may recover.
+  } finally {
+    chatPollInFlight = false
+  }
+}
+
+const startChatPolling = () => {
+  if (chatPollTimer) return
+  void pollChatUpdates()
+  chatPollTimer = window.setInterval(() => void pollChatUpdates(), CHAT_POLL_INTERVAL_MS)
 }
 
 const stopChatPolling = () => {
@@ -381,13 +422,7 @@ const sendReply = async () => {
       replyError.value = '当前未选择会话'
       return
     }
-    thread.messages.push({
-      id: `m-local-${Date.now()}`,
-      from: 'me',
-      sender: myDisplayName.value,
-      avatarUrl: myAvatarUrl.value,
-      content,
-    })
+    void loadActiveContactMessages()
     void loadConversations()
   }
   void scrollToBottom()
@@ -420,18 +455,25 @@ watch([targetUserId, currentUid], () => {
   void loadBackendMessages()
 })
 
+watch(activeContactId, (contactId) => {
+  if (!contactId || !currentUserId.value) return
+  void loadActiveContactMessages()
+})
+
 watch([activeContactId, activeMessages], () => {
   void scrollToBottom()
 })
 
 onMounted(() => {
+  startChatPolling()
   void loadCurrentUser().then(() => {
     void loadConversations()
     if (singleTargetMode.value && targetContactId.value) {
       activeContactId.value = targetUserId.value || targetContactId.value
       void loadBackendMessages()
+      return
     }
-    startChatPolling()
+    void loadActiveContactMessages()
   })
 })
 
