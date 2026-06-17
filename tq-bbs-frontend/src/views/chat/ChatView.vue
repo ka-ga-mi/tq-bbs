@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { chatDataByUid, emptyChatData, type ChatDataset, type ChatMessage } from '../../mocks/chatData'
 import { avatarAssets, resolveDisplayAvatarUrl } from '../../mocks/userProfile'
 import { formatMessageTime, shouldShowMessageTime } from '../../utils/messageTime'
+import { apiRequest } from '../../api/client'
 
 const route = useRoute()
 const router = useRouter()
