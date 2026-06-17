@@ -296,6 +296,55 @@ a {
   min-height: 120px;
 }
 
+.tq-chat-contacts-toggle {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .tq-chat-aside {
+    max-height: none;
+    min-height: 0;
+    flex: 0 0 auto;
+  }
+
+  .tq-chat-contacts-toggle {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    gap: 10px;
+    min-height: 48px;
+    padding: 0 12px;
+    border: none;
+    background: transparent;
+    color: var(--tq-danger, #e85c5c);
+    font-size: 16px;
+    cursor: pointer;
+  }
+
+  .tq-chat-contacts-toggle__arrow {
+    flex-shrink: 0;
+    font-size: 24px;
+    line-height: 1;
+  }
+
+  .tq-chat-aside-top,
+  .tq-chat-aside-bottom {
+    display: none;
+  }
+
+  .tq-chat-aside-body {
+    display: none;
+    max-height: 36vh;
+    height: auto !important;
+    overflow: auto;
+    border-top: 1px solid var(--tq-line);
+  }
+
+  .tq-chat-aside.is-contacts-open .tq-chat-aside-body {
+    display: block;
+  }
+}
+
 @media (min-width: 768px) {
   .tq-chat-aside {
     max-height: none;
