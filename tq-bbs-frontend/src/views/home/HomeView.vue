@@ -859,16 +859,16 @@ onUnmounted(() => {
           />
           <button class="tq-btn shrink-0 rounded-l-none px-12px py-8px whitespace-nowrap sm:px-16px" @click="doSearch">搜索</button>
         </div>
-        <div class="mt-16px flex flex-wrap items-end justify-end gap-10px sm:mt-30px">
+        <div class="tq-home-header__avatar-row">
           <button
             type="button"
-            class="tq-avatar-xl ml-auto shrink-0 overflow-hidden rounded-full border-[5px] border-black bg-danger/90 p-0"
+            class="tq-avatar-xl ml-auto overflow-hidden rounded-full border-[5px] border-black bg-danger/90 p-0"
             :title="isLoggedIn ? '进入档案' : '点击登录'"
             @click="handleCircleClick"
           >
             <img :src="circleAvatarUrl" alt="用户头像" class="h-full w-full rounded-full object-cover" loading="lazy" decoding="async" />
           </button>
-          <button class="tq-btn relative min-w-90px sm:min-w-120px h-40px shrink-0" @click="openChatPage">
+          <button class="tq-btn relative min-w-90px sm:min-w-120px h-36px sm:h-40px shrink-0" @click="openChatPage">
             私聊
             <span
               v-if="hasNewChat"

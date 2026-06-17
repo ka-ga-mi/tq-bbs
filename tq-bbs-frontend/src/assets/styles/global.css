@@ -12,8 +12,10 @@
   --tq-page-pad-y: clamp(10px, 2.5vh, 20px);
   --tq-shell-height: min(92dvh, calc(100dvh - var(--tq-page-pad-y) * 2));
   --tq-shell-width: min(96vw, 1600px);
-  --tq-avatar-xl: clamp(88px, 20vw, 180px);
-  --tq-avatar-lg: clamp(80px, 16vw, 170px);
+  /* 同时受宽度与高度约束，避免矮屏时头像溢出 */
+  --tq-home-avatar: clamp(52px, min(16vw, 20dvh), 160px);
+  --tq-avatar-xl: var(--tq-home-avatar);
+  --tq-avatar-lg: clamp(56px, min(14vw, 18dvh), 150px);
   --tq-avatar-md: clamp(40px, 9vw, 52px);
   --tq-avatar-sm: clamp(36px, 8vw, 42px);
   --tq-text-hero: clamp(22px, 4.5vw, 34px);
@@ -95,6 +97,10 @@ a {
 .tq-avatar-xl {
   width: var(--tq-avatar-xl);
   height: var(--tq-avatar-xl);
+  box-sizing: border-box;
+  flex-shrink: 1;
+  min-width: 48px;
+  min-height: 48px;
 }
 
 .tq-avatar-lg {
@@ -128,14 +134,15 @@ a {
   font-size: var(--tq-text-md);
 }
 
-/* 首页头部：窄屏纵向堆叠 */
+/* 首页头部：窄屏纵向堆叠，高度受限不挤压帖子区 */
 .tq-home-header {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  height: auto;
+  gap: clamp(8px, 1.5vh, 12px);
+  flex: 0 0 auto;
   min-height: 0;
-  flex-shrink: 0;
+  max-height: min(46dvh, 320px);
+  overflow: hidden;
 }
 
 @media (min-width: 768px) {
@@ -143,13 +150,14 @@ a {
     flex-direction: row;
     align-items: flex-start;
     justify-content: space-between;
-    height: 40%;
+    max-height: min(40dvh, 280px);
   }
 }
 
 .tq-home-header__info {
   max-width: 100%;
   font-size: var(--tq-text-sm);
+  flex-shrink: 0;
 }
 
 @media (min-width: 768px) {
@@ -161,6 +169,8 @@ a {
 
 .tq-home-header__actions {
   width: 100%;
+  min-width: 0;
+  flex-shrink: 1;
 }
 
 @media (min-width: 768px) {
@@ -169,18 +179,20 @@ a {
   }
 }
 
+.tq-home-header__avatar-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: clamp(6px, 1.2vh, 10px);
+  margin-top: clamp(8px, 1.8vh, 20px);
+}
+
 .tq-home-body {
   display: flex;
   flex-direction: column;
-  flex: 1;
+  flex: 1 1 0;
   min-height: 0;
-  height: auto;
-}
-
-@media (min-width: 768px) {
-  .tq-home-body {
-    height: 60%;
-  }
 }
 
 /* 分类 Tab：窄屏可换行、去大左边距 */
@@ -288,5 +300,30 @@ a {
   .tq-chat-aside {
     max-height: none;
     height: 100%;
+  }
+}
+
+/* 矮屏：进一步缩小首页大头像与头部占用 */
+@media (max-height: 720px) {
+  :root {
+    --tq-home-avatar: clamp(44px, min(14vw, 16dvh), 96px);
+  }
+
+  .tq-home-header {
+    max-height: min(36dvh, 200px);
+  }
+}
+
+@media (max-height: 560px) {
+  :root {
+    --tq-home-avatar: clamp(40px, min(12vw, 14dvh), 72px);
+  }
+
+  .tq-home-header {
+    max-height: min(32dvh, 160px);
+  }
+
+  .tq-home-header__avatar-row {
+    margin-top: 6px;
   }
 }
