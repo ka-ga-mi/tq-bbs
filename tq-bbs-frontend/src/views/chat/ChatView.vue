@@ -3,7 +3,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { chatDataByUid, emptyChatData, type ChatDataset, type ChatMessage } from '../../mocks/chatData'
 import { avatarAssets, resolveDisplayAvatarUrl } from '../../mocks/userProfile'
-import { formatMessageTime, shouldShowMessageTime } from '../../utils/messageTime'
+import { formatMessageTime, resolveMessageCreatedAt, shouldShowMessageTime } from '../../utils/messageTime'
 import { apiRequest } from '../../api/client'
 
 const route = useRoute()
@@ -233,9 +233,9 @@ const displayAvatar = (message: ChatMessage) => {
 
 const showMessageTime = (index: number) => {
   const list = activeMessages.value
-  const current = list[index]?.createdAt
-  const previous = index > 0 ? list[index - 1]?.createdAt : undefined
-  return shouldShowMessageTime(current, previous)
+  const current = list[index]
+  const previous = index > 0 ? list[index - 1] : undefined
+  return shouldShowMessageTime(current?.createdAt, previous?.createdAt, current?.id, previous?.id)
 }
 const ensureRouteTargetThread = () => {
   if (singleTargetMode.value) return
@@ -291,7 +291,7 @@ const loadConversations = async () => {
           avatarUrl: msg.senderId === currentUserId.value ? myAvatarUrl.value : resolveDisplayAvatarUrl(item.avatarUrl),
           content: msg.content || '',
           userId: msg.senderId,
-          createdAt: msg.createdAt,
+          createdAt: resolveMessageCreatedAt(msg.createdAt, msg.id),
         })),
       })),
     }
@@ -331,7 +331,7 @@ const mapRawMessages = (
     avatarUrl: item.senderId === currentUserId.value ? myAvatarUrl.value : contactAvatar,
     content: item.content || '',
     userId: item.senderId,
-    createdAt: item.createdAt,
+    createdAt: resolveMessageCreatedAt(item.createdAt, item.id),
   }))
 
 const loadBackendMessages = async () => {
@@ -428,9 +428,10 @@ const sendReply = async () => {
     replyError.value = '当前未选择会话'
     return
   }
+  let sentMessage: RawChatMessage | null = null
   try {
     if (singleTargetMode.value && targetUserId.value) {
-      await apiRequest(`/api/chat/messages/${encodeURIComponent(targetUserId.value)}`, {
+      sentMessage = await apiRequest<RawChatMessage>(`/api/chat/messages/${encodeURIComponent(targetUserId.value)}`, {
         method: 'POST',
         auth: true,
         body: { content },
@@ -443,38 +444,66 @@ const sendReply = async () => {
       }
       const backendTargetId = thread.contactId
       if (backendTargetId && !backendTargetId.startsWith('c-') && !backendTargetId.startsWith('route-target-')) {
-        await apiRequest(`/api/chat/messages/${encodeURIComponent(backendTargetId)}`, {
+        sentMessage = await apiRequest<RawChatMessage>(`/api/chat/messages/${encodeURIComponent(backendTargetId)}`, {
           method: 'POST',
           auth: true,
           body: { content },
         })
       } else {
-        await apiRequest(`/api/chat/messages/by-name/${encodeURIComponent(thread.contactName)}`, {
-          method: 'POST',
-          auth: true,
-          body: { content },
-        })
+        sentMessage = await apiRequest<RawChatMessage>(
+          `/api/chat/messages/by-name/${encodeURIComponent(thread.contactName)}`,
+          {
+            method: 'POST',
+            auth: true,
+            body: { content },
+          },
+        )
       }
     }
   } catch (error) {
     replyError.value = error instanceof Error ? error.message : '发送失败，请稍后重试'
     return
   }
+
+  const appendSentMessage = (msg: RawChatMessage): ChatMessage => ({
+    id: msg.id,
+    from: 'me',
+    sender: myDisplayName.value,
+    avatarUrl: myAvatarUrl.value,
+    content: msg.content || content,
+    userId: currentUserId.value,
+    createdAt: resolveMessageCreatedAt(msg.createdAt, msg.id),
+  })
+
   if (singleTargetMode.value) {
-    backendMessages.value.push({
-      id: `m-local-${Date.now()}`,
-      from: 'me',
-      sender: myDisplayName.value,
-      avatarUrl: myAvatarUrl.value,
-      content,
-      userId: currentUserId.value,
-      createdAt: new Date().toISOString(),
-    })
+    backendMessages.value.push(
+      sentMessage
+        ? appendSentMessage(sentMessage)
+        : {
+            id: `m-local-${Date.now()}`,
+            from: 'me',
+            sender: myDisplayName.value,
+            avatarUrl: myAvatarUrl.value,
+            content,
+            userId: currentUserId.value,
+            createdAt: new Date().toISOString(),
+          },
+    )
   } else {
     const thread = activeThread.value
     if (!thread) {
       replyError.value = '当前未选择会话'
       return
+    }
+    if (sentMessage && backendChatData.value) {
+      const threadIndex = backendChatData.value.threads.findIndex((item) => item.contactId === thread.contactId)
+      if (threadIndex >= 0) {
+        const nextMessage = appendSentMessage(sentMessage)
+        backendChatData.value.threads[threadIndex] = {
+          ...backendChatData.value.threads[threadIndex],
+          messages: [...backendChatData.value.threads[threadIndex].messages, nextMessage],
+        }
+      }
     }
     void loadActiveContactMessages()
     void loadConversations()
@@ -603,9 +632,9 @@ onUnmounted(() => {
           <template v-for="(message, index) in activeMessages" :key="message.id">
             <div
               v-if="showMessageTime(index)"
-              class="mb-8px text-center text-11px sm:text-12px text-muted"
+              class="mb-8px text-center text-13px text-danger"
             >
-              {{ formatMessageTime(message.createdAt) }}
+              {{ formatMessageTime(message.createdAt, message.id) }}
             </div>
             <article
               class="mb-14px flex items-end gap-8px"

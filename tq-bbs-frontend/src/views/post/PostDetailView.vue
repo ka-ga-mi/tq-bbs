@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { homePosts } from '../../mocks/homePosts'
 import { postDetails } from '../../mocks/postDetails'
 import { resolveDisplayAvatarUrl } from '../../mocks/userProfile'
-import { formatMessageTime, shouldShowMessageTime } from '../../utils/messageTime'
+import { formatMessageTime, resolveMessageCreatedAt, shouldShowMessageTime } from '../../utils/messageTime'
 import { apiRequest } from '../../api/client'
 
 type PostReply = {
@@ -78,9 +78,9 @@ const selectedReply = computed(() => replies.value.find((item) => item.id === se
 
 const showReplyTime = (index: number) => {
   const list = replies.value
-  const current = list[index]?.createdAt
-  const previous = index > 0 ? list[index - 1]?.createdAt : undefined
-  return shouldShowMessageTime(current, previous)
+  const current = list[index]
+  const previous = index > 0 ? list[index - 1] : undefined
+  return shouldShowMessageTime(current?.createdAt, previous?.createdAt, current?.id, previous?.id)
 }
 
 const scrollToReplyBottom = async () => {
@@ -116,7 +116,7 @@ const mapPostDetail = (data: ApiPostDetail): PostDetailData => ({
     userName: item.userName || '匿名用户',
     avatarUrl: resolveDisplayAvatarUrl(item.avatarUrl),
     content: item.content || '',
-    createdAt: item.createdAt,
+    createdAt: resolveMessageCreatedAt(item.createdAt, item.id),
   })),
 })
 
@@ -265,7 +265,7 @@ const submitReply = async () => {
       avatarUrl: resolveDisplayAvatarUrl(data.avatarUrl),
       content: data.content,
       userId: currentUser.value?.id,
-      createdAt: data.createdAt || new Date().toISOString(),
+      createdAt: resolveMessageCreatedAt(data.createdAt, data.id) || new Date().toISOString(),
     }
     if (backendDetail.value) {
       backendDetail.value.replies.push(newReply)
@@ -331,9 +331,9 @@ onUnmounted(() => {
           <template v-for="(reply, index) in replies" :key="reply.id">
             <div
               v-if="showReplyTime(index)"
-              class="relative z-1 mb-8px text-center text-12px text-danger/75"
+              class="relative z-1 mb-8px text-center text-13px text-danger"
             >
-              {{ formatMessageTime(reply.createdAt) }}
+              {{ formatMessageTime(reply.createdAt, reply.id) }}
             </div>
           <article
           class="flex cursor-pointer items-start gap-8px sm:gap-10px rounded-6px p-4px"
