@@ -7,7 +7,7 @@ import { apiRequest } from '../../api/client'
 import { deferIdle } from '../../utils/defer'
 
 const AUTH_STORAGE_KEY = 'tq_bbs_auth'
-const ITEMS_PER_PAGE = 3
+const ITEMS_PER_PAGE = 9
 const currentPage = ref(1)
 const activeType = ref<'主页' | '精品' | '直播' | '我的' | '关注'>('主页')
 const postTypes = ['主页', '精品', '直播', '我的', '关注'] as const
@@ -925,80 +925,79 @@ onUnmounted(() => {
           </div>
         </nav>
 
-       <div class="relative z-1 mt-8px h-[calc(100%-58px)] overflow-hidden pr-2px flex flex-col gap-8px">
-          <div v-if="postsLoading" class="flex h-full flex-col gap-8px">
+       <div class="relative z-1 mt-8px h-[calc(100%-58px)] overflow-hidden pr-2px">
+          <div v-if="postsLoading" class="tq-home-post-grid h-full">
             <div
-              v-for="n in 3"
+              v-for="n in 9"
               :key="n"
-              class="min-h-72px flex-1 animate-pulse border border-[var(--tq-line)] bg-[rgba(0,0,0,.24)] p-10px sm:min-h-0 sm:h-1/3"
+              class="tq-home-post-card animate-pulse border border-[var(--tq-line)] bg-[rgba(0,0,0,.24)] p-6px"
             >
-              <div class="flex items-center gap-10px">
-                <div class="tq-avatar-md shrink-0 rounded-full bg-danger/25" />
-                <div class="h-16px flex-1 rounded-2px bg-danger/20" />
+              <div class="tq-home-post-card__row">
+                <div class="tq-home-post-card__avatar rounded-full bg-danger/25" />
+                <div class="h-14px flex-1 rounded-2px bg-danger/20" />
               </div>
             </div>
           </div>
-          <template v-else>
+          <div v-else-if="pagedPosts.length" class="tq-home-post-grid h-full overflow-auto">
           <article
-    v-for="item in pagedPosts"
-    :key="item.id"
-    class="group relative min-h-0 flex flex-col sm:flex-row cursor-pointer items-stretch sm:items-center gap-8px sm:gap-10px border border-[var(--tq-line)] bg-[rgba(0,0,0,.24)] p-10px transition hover:bg-[rgba(180,20,20,.18)] sm:h-1/3"
-    @click="openPost(item.id)"
-  >
-            <div class="flex min-w-0 flex-1 items-center gap-10px">
-            <img
-              :src="resolveDisplayAvatarUrl(item.avatarUrl)"
-              alt="帖子头像"
-              class="tq-avatar-md shrink-0 rounded-full border-[5px] border-black object-cover"
-              loading="lazy"
-              decoding="async"
-            />
-            <h3 class="m-0 min-w-0 flex-1 truncate text-[var(--tq-text-md)] font-700 text-danger sm:pr-[280px]">
-              <span
-                v-if="item.isPinned"
-                class="mr-6px inline-flex items-center rounded-2px border border-danger/60 bg-danger/20 px-4px py-1px text-12px tracking-1px text-danger"
-              >
-                置顶
-              </span>
-              「{{ item.tag }}」<span class="ml-4px font-500">{{ item.title }}</span>
-              <span
-                v-if="(activeType === '我的' && unreadPostReplyMap[item.id]) || (activeType === '关注' && unreadFollowPostReplyMap[item.id])"
-                class="pointer-events-none ml-6px inline-flex h-18px min-w-18px items-center justify-center rounded-2px bg-[#ff2a2a] px-4px text-12px font-800 leading-none text-black"
-                aria-label="该帖子有新回复"
-              >!</span>
-            </h3>
-            </div>
+            v-for="item in pagedPosts"
+            :key="item.id"
+            class="tq-home-post-card group relative cursor-pointer border border-[var(--tq-line)] bg-[rgba(0,0,0,.24)] p-6px sm:p-8px transition hover:bg-[rgba(180,20,20,.18)]"
+            @click="openPost(item.id)"
+          >
+            <div class="tq-home-post-card__row">
+              <img
+                :src="resolveDisplayAvatarUrl(item.avatarUrl)"
+                alt="帖子头像"
+                class="tq-home-post-card__avatar shrink-0 rounded-full border-[3px] border-black object-cover sm:border-[4px]"
+                loading="lazy"
+                decoding="async"
+              />
+              <h3 class="tq-home-post-card__title m-0 min-w-0 flex-1 text-11px sm:text-14px font-700 leading-[1.35] text-danger">
+                <span
+                  v-if="item.isPinned"
+                  class="mr-4px inline-flex items-center rounded-2px border border-danger/60 bg-danger/20 px-3px py-0 text-10px tracking-1px text-danger"
+                >
+                  置顶
+                </span>
+                「{{ item.tag }}」{{ item.title }}
+                <span
+                  v-if="(activeType === '我的' && unreadPostReplyMap[item.id]) || (activeType === '关注' && unreadFollowPostReplyMap[item.id])"
+                  class="pointer-events-none ml-4px inline-flex h-16px min-w-16px items-center justify-center rounded-2px bg-[#ff2a2a] px-3px text-10px font-800 leading-none text-black"
+                  aria-label="该帖子有新回复"
+                >!</span>
+              </h3>
+              <div class="tq-post-row__actions tq-home-post-card__actions" @click.stop>
+                <button
+                  v-if="isAdmin"
+                  class="tq-btn-ghost px-4px py-2px text-10px sm:text-12px"
+                  :disabled="pinningPostId === item.id"
+                  @click="togglePinned(item)"
+                >
+                  {{ pinningPostId === item.id ? '...' : item.isPinned ? '取消' : '置顶' }}
+                </button>
 
-            <div class="tq-post-row__actions" @click.stop>
-            <button
-              v-if="isAdmin"
-              class="tq-btn-ghost px-10px py-4px sm:px-12px sm:py-6px"
-              :disabled="pinningPostId === item.id"
-              @click="togglePinned(item)"
-            >
-              {{ pinningPostId === item.id ? '处理中...' : item.isPinned ? '取消置顶' : '置顶' }}
-            </button>
+                <button
+                  v-if="isAdmin"
+                  class="tq-btn-ghost px-4px py-2px text-10px sm:text-12px"
+                  :disabled="featuringPostId === item.id"
+                  @click="toggleFeatured(item)"
+                >
+                  {{ featuringPostId === item.id ? '...' : item.isFeatured ? '取消' : '加精' }}
+                </button>
 
-            <button
-              v-if="isAdmin"
-              class="tq-btn-ghost px-10px py-4px sm:px-12px sm:py-6px"
-              :disabled="featuringPostId === item.id"
-              @click="toggleFeatured(item)"
-            >
-              {{ featuringPostId === item.id ? '处理中...' : item.isFeatured ? '取消精品' : '加精' }}
-            </button>
-
-            <button
-              v-if="isLoggedIn && currentUser && (item.authorName === currentUser.nickname || isAdmin)"
-              class="tq-btn-ghost px-10px py-4px sm:px-12px sm:py-6px"
-              :disabled="deletingPostId === item.id"
-              @click="deletePost(item.id)"
-            >
-              {{ deletingPostId === item.id ? '删除中...' : '删除' }}
-            </button>
+                <button
+                  v-if="isLoggedIn && currentUser && (item.authorName === currentUser.nickname || isAdmin)"
+                  class="tq-btn-ghost px-4px py-2px text-10px sm:text-12px"
+                  :disabled="deletingPostId === item.id"
+                  @click="deletePost(item.id)"
+                >
+                  {{ deletingPostId === item.id ? '...' : '删除' }}
+                </button>
+              </div>
             </div>
           </article>
-          </template>
+          </div>
           <div v-if="!postsLoading && pagedPosts.length === 0" class="flex h-full items-center justify-center text-14px text-muted">
             {{
               postsLoadFailed
