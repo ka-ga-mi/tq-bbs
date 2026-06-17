@@ -1,10 +1,34 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { homePosts } from '../../mocks/homePosts'
 import { postDetails } from '../../mocks/postDetails'
-import { avatarAssets, resolveDisplayAvatarUrl } from '../../mocks/userProfile'
+import { resolveDisplayAvatarUrl } from '../../mocks/userProfile'
 import { apiRequest } from '../../api/client'
+
+type PostReply = {
+  id: string
+  userId?: string
+  userName: string
+  avatarUrl: string
+  content: string
+}
+
+type PostDetailData = {
+  id: string
+  title: string
+  createdAt: string
+  isLocked?: boolean
+  replies: PostReply[]
+}
+
+type ApiPostDetail = {
+  id: string
+  title: string
+  createdAt: string
+  isLocked?: boolean
+  replies?: PostReply[]
+}
 
 const route = useRoute()
 const router = useRouter()
@@ -12,13 +36,7 @@ const replyContent = ref('')
 const replyError = ref('')
 const selectedReplyId = ref('')
 const replyListRef = ref<HTMLElement | null>(null)
-const backendDetail = ref<{
-  id: string
-  title: string
-  createdAt: string
-  isLocked?: boolean
-  replies: Array<{ id: string; userId?: string; userName: string; avatarUrl: string; content: string }>
-} | null>(null)
+const backendDetail = ref<PostDetailData | null>(null)
 const detailLoading = ref(true)
 const detailLoadFailed = ref(false)
 
@@ -96,38 +114,72 @@ const openUserProfile = (reply: { userId?: string; userName: string }) => {
   }
   router.push(`/users/${encodeURIComponent(reply.userId)}`)
 }
-const loadBackendPostDetail = async () => {
+const mapPostDetail = (data: ApiPostDetail): PostDetailData => ({
+  id: data.id,
+  title: data.title || '',
+  createdAt: data.createdAt || '',
+  isLocked: Boolean(data.isLocked),
+  replies: (data.replies ?? []).map((item) => ({
+    id: item.id,
+    userId: item.userId,
+    userName: item.userName || '匿名用户',
+    avatarUrl: resolveDisplayAvatarUrl(item.avatarUrl),
+    content: item.content || '',
+  })),
+})
+
+const loadBackendPostDetail = async (options?: { silent?: boolean }) => {
   if (!postId.value) return
-  detailLoading.value = true
-  detailLoadFailed.value = false
-  backendDetail.value = null
-  try {
-    const data = await apiRequest<{
-      id: string
-      title: string
-      createdAt: string
-      isLocked?: boolean
-      replies?: Array<{ id: string; userId?: string; userName: string; avatarUrl: string; content: string }>
-    }>(`/api/posts/${postId.value}`)
-    backendDetail.value = {
-      id: data.id,
-      title: data.title || '',
-      createdAt: data.createdAt || '',
-      isLocked: Boolean(data.isLocked),
-      replies: (data.replies ?? []).map((item) => ({
-        id: item.id,
-        userId: item.userId,
-        userName: item.userName || '匿名用户',
-        avatarUrl: resolveDisplayAvatarUrl(item.avatarUrl),
-        content: item.content || '',
-      })),
-    }
-  } catch {
-    detailLoadFailed.value = true
+  const silent = options?.silent ?? false
+  if (!silent) {
+    detailLoading.value = true
+    detailLoadFailed.value = false
     backendDetail.value = null
-  } finally {
-    detailLoading.value = false
   }
+  try {
+    const data = await apiRequest<ApiPostDetail>(`/api/posts/${postId.value}`)
+    backendDetail.value = mapPostDetail(data)
+    detailLoadFailed.value = false
+  } catch {
+    if (!silent) {
+      detailLoadFailed.value = true
+      backendDetail.value = null
+    }
+  } finally {
+    if (!silent) detailLoading.value = false
+  }
+}
+
+let postPollTimer: ReturnType<typeof window.setInterval> | undefined
+let postPollInFlight = false
+const POST_POLL_INTERVAL_MS = 2500
+
+const pollPostUpdates = async () => {
+  if (document.hidden || postPollInFlight || !postId.value || detailLoading.value) return
+
+  postPollInFlight = true
+  try {
+    const prevLastId = replies.value.at(-1)?.id || ''
+    await loadBackendPostDetail({ silent: true })
+    const nextLastId = replies.value.at(-1)?.id || ''
+    if (nextLastId && nextLastId !== prevLastId) void scrollToReplyBottom()
+  } catch {
+    // Ignore polling errors; the next tick may recover.
+  } finally {
+    postPollInFlight = false
+  }
+}
+
+const startPostPolling = () => {
+  if (postPollTimer) return
+  void pollPostUpdates()
+  postPollTimer = window.setInterval(() => void pollPostUpdates(), POST_POLL_INTERVAL_MS)
+}
+
+const stopPostPolling = () => {
+  if (!postPollTimer) return
+  window.clearInterval(postPollTimer)
+  postPollTimer = undefined
 }
 
 const loadCurrentUser = async () => {
@@ -219,9 +271,14 @@ watch(replies, () => {
 })
 
 onMounted(() => {
+  startPostPolling()
   void Promise.all([loadCurrentUser(), loadBackendPostDetail()]).then(() => {
     void scrollToReplyBottom()
   })
+})
+
+onUnmounted(() => {
+  stopPostPolling()
 })
 </script>
 
