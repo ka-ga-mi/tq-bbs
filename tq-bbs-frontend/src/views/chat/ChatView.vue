@@ -3,7 +3,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { chatDataByUid, emptyChatData, type ChatDataset, type ChatMessage } from '../../mocks/chatData'
 import { avatarAssets, resolveDisplayAvatarUrl } from '../../mocks/userProfile'
-import { apiRequest } from '../../api/client'
+import { formatMessageTime, shouldShowMessageTime } from '../../utils/messageTime'
 
 const route = useRoute()
 const router = useRouter()
@@ -229,6 +229,13 @@ const displayAvatar = (message: ChatMessage) => {
   const avatar = isMine(message) ? myAvatarUrl.value : message.avatarUrl
   return avatar?.trim() || avatarAssets.nose
 }
+
+const showMessageTime = (index: number) => {
+  const list = activeMessages.value
+  const current = list[index]?.createdAt
+  const previous = index > 0 ? list[index - 1]?.createdAt : undefined
+  return shouldShowMessageTime(current, previous)
+}
 const ensureRouteTargetThread = () => {
   if (singleTargetMode.value) return
   if (backendChatData.value) return
@@ -283,6 +290,7 @@ const loadConversations = async () => {
           avatarUrl: msg.senderId === currentUserId.value ? myAvatarUrl.value : resolveDisplayAvatarUrl(item.avatarUrl),
           content: msg.content || '',
           userId: msg.senderId,
+          createdAt: msg.createdAt,
         })),
       })),
     }
@@ -305,7 +313,7 @@ const loadConversations = async () => {
   }
 }
 
-type RawChatMessage = { id: string; senderId: string; content: string }
+type RawChatMessage = { id: string; senderId: string; content: string; createdAt?: string }
 
 const isBackendContactId = (contactId: string) =>
   Boolean(contactId) && !contactId.startsWith('c-') && !contactId.startsWith('route-target-')
@@ -322,6 +330,7 @@ const mapRawMessages = (
     avatarUrl: item.senderId === currentUserId.value ? myAvatarUrl.value : contactAvatar,
     content: item.content || '',
     userId: item.senderId,
+    createdAt: item.createdAt,
   }))
 
 const loadBackendMessages = async () => {
@@ -457,6 +466,8 @@ const sendReply = async () => {
       sender: myDisplayName.value,
       avatarUrl: myAvatarUrl.value,
       content,
+      userId: currentUserId.value,
+      createdAt: new Date().toISOString(),
     })
   } else {
     const thread = activeThread.value
@@ -588,12 +599,17 @@ onUnmounted(() => {
         </header>
 
         <div ref="messageListRef" class="min-h-0 flex-1 overflow-auto px-12px py-10px">
-          <article
-            v-for="message in activeMessages"
-            :key="message.id"
-            class="mb-14px flex items-end gap-8px"
-            :class="isMine(message) ? 'justify-end' : 'justify-start'"
-          >
+          <template v-for="(message, index) in activeMessages" :key="message.id">
+            <div
+              v-if="showMessageTime(index)"
+              class="mb-8px text-center text-11px sm:text-12px text-muted"
+            >
+              {{ formatMessageTime(message.createdAt) }}
+            </div>
+            <article
+              class="mb-14px flex items-end gap-8px"
+              :class="isMine(message) ? 'justify-end' : 'justify-start'"
+            >
             <div
               class="flex h-48px w-48px sm:h-62px sm:w-62px shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-full border-[5px] border-black bg-black/70 text-14px text-danger"
               :class="isMine(message) ? 'order-2' : 'order-1'"
@@ -611,6 +627,7 @@ onUnmounted(() => {
               </div>
             </div>
           </article>
+          </template>
         </div>
 
         <footer class="shrink-0 border-t border-[var(--tq-line)] px-14px py-10px">

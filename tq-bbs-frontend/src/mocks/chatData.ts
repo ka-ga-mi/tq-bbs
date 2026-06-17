@@ -13,6 +13,7 @@ export type ChatMessage = {
   avatarUrl: string
   content: string
   userId?: string
+  createdAt?: string
 }
 
 export type ChatThread = {

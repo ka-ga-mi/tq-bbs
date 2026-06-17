@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { homePosts } from '../../mocks/homePosts'
 import { postDetails } from '../../mocks/postDetails'
 import { resolveDisplayAvatarUrl } from '../../mocks/userProfile'
+import { formatMessageTime, shouldShowMessageTime } from '../../utils/messageTime'
 import { apiRequest } from '../../api/client'
 
 type PostReply = {
@@ -74,6 +75,13 @@ const isAdmin = computed(() => currentUser.value?.role === 'admin')
 const myDisplayName = computed(() => currentUser.value?.nickname ?? '佚名')
 const isMyReply = (replyUserName: string) => replyUserName === myDisplayName.value
 const selectedReply = computed(() => replies.value.find((item) => item.id === selectedReplyId.value) ?? null)
+
+const showReplyTime = (index: number) => {
+  const list = replies.value
+  const current = list[index]?.createdAt
+  const previous = index > 0 ? list[index - 1]?.createdAt : undefined
+  return shouldShowMessageTime(current, previous)
+}
 
 const scrollToReplyBottom = async () => {
   await nextTick()
@@ -245,6 +253,7 @@ const submitReply = async () => {
       userName: string
       avatarUrl: string
       content: string
+      createdAt?: string
     }>(`/api/posts/${postId.value}/replies`, {
       method: 'POST',
       auth: true,
@@ -255,6 +264,8 @@ const submitReply = async () => {
       userName: data.userName,
       avatarUrl: resolveDisplayAvatarUrl(data.avatarUrl),
       content: data.content,
+      userId: currentUser.value?.id,
+      createdAt: data.createdAt || new Date().toISOString(),
     }
     if (backendDetail.value) {
       backendDetail.value.replies.push(newReply)
@@ -317,9 +328,14 @@ onUnmounted(() => {
         <p v-else-if="detailLoadFailed" class="m-0 text-center text-14px text-muted">帖子加载失败，请检查网络后刷新</p>
         <p v-else-if="replies.length === 0" class="m-0 text-center text-14px text-muted">暂无回帖，来抢沙发吧</p>
         <template v-else>
+          <template v-for="(reply, index) in replies" :key="reply.id">
+            <div
+              v-if="showReplyTime(index)"
+              class="relative z-1 mb-8px text-center text-12px text-danger/75"
+            >
+              {{ formatMessageTime(reply.createdAt) }}
+            </div>
           <article
-            v-for="reply in replies"
-            :key="reply.id"
           class="flex cursor-pointer items-start gap-8px sm:gap-10px rounded-6px p-4px"
           :class="isMyReply(reply.userName) ? 'justify-end' : 'justify-start'"
           @click="selectedReplyId = selectedReplyId === reply.id ? '' : reply.id"
@@ -352,6 +368,7 @@ onUnmounted(() => {
             </div>
           </div>
         </article>
+          </template>
         </template>
 
       </div>
