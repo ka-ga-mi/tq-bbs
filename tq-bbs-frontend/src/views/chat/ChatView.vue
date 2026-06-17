@@ -78,7 +78,26 @@ const toggleMobileContacts = () => {
 }
 
 const goHome = () => router.push('/home')
-const isMine = (message: ChatMessage) => message.from === 'me' || message.sender === '佚名'
+const isMine = (message: ChatMessage) => message.from === 'me' || message.sender === myDisplayName.value
+
+const openUserProfile = (message: ChatMessage) => {
+  let userId = message.userId?.trim() || ''
+  if (!userId) {
+    userId = isMine(message) ? currentUserId.value : singleTargetMode.value ? targetUserId.value : activeContactId.value
+  }
+  if (!userId || userId.startsWith('c-') || userId.startsWith('route-target-')) {
+    replyError.value = '该用户不可访问'
+    return
+  }
+  if (!currentUser.value) {
+    void router.push({
+      path: '/home',
+      query: { login: '1', redirect: `/users/${encodeURIComponent(userId)}` },
+    })
+    return
+  }
+  router.push(`/users/${encodeURIComponent(userId)}`)
+}
 
 const scrollToBottom = async () => {
   await nextTick()
@@ -263,6 +282,7 @@ const loadConversations = async () => {
           sender: msg.senderId === currentUserId.value ? myDisplayName.value : item.contactName,
           avatarUrl: msg.senderId === currentUserId.value ? myAvatarUrl.value : resolveDisplayAvatarUrl(item.avatarUrl),
           content: msg.content || '',
+          userId: msg.senderId,
         })),
       })),
     }
@@ -301,6 +321,7 @@ const mapRawMessages = (
     sender: item.senderId === currentUserId.value ? myDisplayName.value : contactName,
     avatarUrl: item.senderId === currentUserId.value ? myAvatarUrl.value : contactAvatar,
     content: item.content || '',
+    userId: item.senderId,
   }))
 
 const loadBackendMessages = async () => {
@@ -574,8 +595,9 @@ onUnmounted(() => {
             :class="isMine(message) ? 'justify-end' : 'justify-start'"
           >
             <div
-              class="flex h-48px w-48px sm:h-62px sm:w-62px shrink-0 items-center justify-center overflow-hidden rounded-full border-[5px] border-black bg-black/70 text-14px text-danger"
+              class="flex h-48px w-48px sm:h-62px sm:w-62px shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-full border-[5px] border-black bg-black/70 text-14px text-danger"
               :class="isMine(message) ? 'order-2' : 'order-1'"
+              @click.stop="openUserProfile(message)"
             >
               <img :src="displayAvatar(message)" alt="消息头像" class="h-full w-full rounded-full object-cover" />
             </div>

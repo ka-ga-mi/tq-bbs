@@ -254,7 +254,8 @@ a {
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-  flex: 1 1 0;
+  flex: 0 0 calc((100% - 16px) / 3);
+  max-height: calc((100% - 16px) / 3);
 }
 
 .tq-home-post-card__row {
