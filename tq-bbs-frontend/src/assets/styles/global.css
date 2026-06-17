@@ -240,41 +240,35 @@ a {
   color: #fff;
 }
 
-/* 首页帖子：三列网格 */
-.tq-home-post-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: clamp(6px, 1.5vw, 10px);
-  align-content: start;
+/* 首页帖子：三行列表 */
+.tq-home-post-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 100%;
+  min-height: 0;
 }
 
 .tq-home-post-card {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  min-height: 56px;
+  min-height: 0;
+  flex: 1 1 0;
 }
 
 .tq-home-post-card__row {
   display: flex;
   align-items: center;
-  gap: clamp(4px, 1vw, 8px);
+  gap: 10px;
   min-width: 0;
   height: 100%;
 }
 
-.tq-home-post-card__avatar {
-  width: clamp(28px, 8vw, var(--tq-avatar-sm));
-  height: clamp(28px, 8vw, var(--tq-avatar-sm));
-  flex-shrink: 0;
-}
-
 .tq-home-post-card__title {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
   overflow: hidden;
-  word-break: break-word;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   text-align: left;
 }
 
@@ -300,13 +294,9 @@ a {
 }
 
 @media (min-width: 768px) {
-  .tq-home-post-card {
-    min-height: 72px;
-  }
-
   .tq-home-post-card__actions .tq-btn-ghost {
     font-size: 12px;
-    padding: 4px 8px;
+    padding: 4px 10px;
   }
 }
 
