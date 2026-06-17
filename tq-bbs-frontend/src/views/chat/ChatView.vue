@@ -100,10 +100,15 @@ const openUserProfile = (message: ChatMessage) => {
   router.push(`/users/${encodeURIComponent(userId)}`)
 }
 
-const scrollToBottom = async () => {
+const SCROLL_BOTTOM_THRESHOLD = 80
+
+const isNearBottom = (el: HTMLElement) => el.scrollHeight - el.scrollTop - el.clientHeight <= SCROLL_BOTTOM_THRESHOLD
+
+const scrollToBottom = async (force = false) => {
   await nextTick()
   const el = messageListRef.value
   if (!el) return
+  if (!force && !isNearBottom(el)) return
   el.scrollTop = el.scrollHeight
 }
 
@@ -393,12 +398,14 @@ const pollChatUpdates = async () => {
     if (!currentUserId.value) await loadCurrentUser()
     if (!currentUserId.value) return
 
+    const el = messageListRef.value
+    const shouldFollow = el ? isNearBottom(el) : true
     const prevLastId = activeMessages.value.at(-1)?.id || ''
     await loadActiveContactMessages()
     await loadConversations()
     markActiveContactAsRead()
     const nextLastId = activeMessages.value.at(-1)?.id || ''
-    if (nextLastId && nextLastId !== prevLastId) void scrollToBottom()
+    if (nextLastId && nextLastId !== prevLastId && shouldFollow) void scrollToBottom()
   } catch {
     // Ignore polling errors; the next tick may recover.
   } finally {
@@ -508,7 +515,7 @@ const sendReply = async () => {
     void loadActiveContactMessages()
     void loadConversations()
   }
-  void scrollToBottom()
+  void scrollToBottom(true)
   replyContent.value = ''
   replyError.value = ''
 }
@@ -535,18 +542,15 @@ watch(
 watch([targetUserId, currentUid], () => {
   if (!singleTargetMode.value) return
   if (!currentUid.value) return
-  void loadBackendMessages()
+  void loadBackendMessages().then(() => scrollToBottom(true))
 })
 
 watch(activeContactId, (contactId) => {
   if (!contactId || !currentUserId.value) return
   void loadActiveContactMessages().then(() => {
     markContactAsRead(contactId)
+    void scrollToBottom(true)
   })
-})
-
-watch([activeContactId, activeMessages], () => {
-  void scrollToBottom()
 })
 
 onMounted(() => {
@@ -557,10 +561,16 @@ onMounted(() => {
     })
     if (singleTargetMode.value && targetContactId.value) {
       activeContactId.value = targetUserId.value || targetContactId.value
-      void loadBackendMessages().then(() => markActiveContactAsRead())
+      void loadBackendMessages().then(() => {
+        markActiveContactAsRead()
+        void scrollToBottom(true)
+      })
       return
     }
-    void loadActiveContactMessages().then(() => markActiveContactAsRead())
+    void loadActiveContactMessages().then(() => {
+      markActiveContactAsRead()
+      void scrollToBottom(true)
+    })
   })
 })
 

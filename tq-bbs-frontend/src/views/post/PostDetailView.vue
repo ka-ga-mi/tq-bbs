@@ -83,10 +83,15 @@ const showReplyTime = (index: number) => {
   return shouldShowMessageTime(current?.createdAt, previous?.createdAt, current?.id, previous?.id)
 }
 
-const scrollToReplyBottom = async () => {
+const SCROLL_BOTTOM_THRESHOLD = 80
+
+const isNearBottom = (el: HTMLElement) => el.scrollHeight - el.scrollTop - el.clientHeight <= SCROLL_BOTTOM_THRESHOLD
+
+const scrollToReplyBottom = async (force = false) => {
   await nextTick()
   const el = replyListRef.value
   if (!el) return
+  if (!force && !isNearBottom(el)) return
   el.scrollTop = el.scrollHeight
 }
 
@@ -168,7 +173,10 @@ const loadBackendPostDetail = async (options?: { silent?: boolean }) => {
       backendDetail.value = null
     }
   } finally {
-    if (!silent) detailLoading.value = false
+    if (!silent) {
+      detailLoading.value = false
+      void scrollToReplyBottom(true)
+    }
   }
 }
 
@@ -181,10 +189,12 @@ const pollPostUpdates = async () => {
 
   postPollInFlight = true
   try {
+    const el = replyListRef.value
+    const shouldFollow = el ? isNearBottom(el) : true
     const prevLastId = replies.value.at(-1)?.id || ''
     await loadBackendPostDetail({ silent: true })
     const nextLastId = replies.value.at(-1)?.id || ''
-    if (nextLastId && nextLastId !== prevLastId) void scrollToReplyBottom()
+    if (nextLastId && nextLastId !== prevLastId && shouldFollow) void scrollToReplyBottom()
   } catch {
     // Ignore polling errors; the next tick may recover.
   } finally {
@@ -284,21 +294,17 @@ const submitReply = async () => {
   replyContent.value = ''
   replyError.value = ''
   selectedReplyId.value = ''
+  void scrollToReplyBottom(true)
 }
 
 watch(postId, () => {
   void loadBackendPostDetail()
 })
 
-watch(replies, () => {
-  void scrollToReplyBottom()
-})
-
 onMounted(() => {
   startPostPolling()
-  void Promise.all([loadCurrentUser(), loadBackendPostDetail()]).then(() => {
-    void scrollToReplyBottom()
-  })
+  void loadCurrentUser()
+  void loadBackendPostDetail()
 })
 
 onUnmounted(() => {
