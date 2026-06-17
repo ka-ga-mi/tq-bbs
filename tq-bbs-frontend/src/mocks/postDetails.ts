@@ -6,6 +6,7 @@ export type PostReply = {
   userName: string
   avatarUrl: string
   content: string
+  createdAt?: string
 }
 
 export type PostDetail = {

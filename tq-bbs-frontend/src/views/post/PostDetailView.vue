@@ -51,7 +51,7 @@ const POST_FOLLOW_REPLY_READ_KEY = 'tq_bbs_follow_post_reply_read_state'
 
 const currentUser = ref<{ id: string; nickname: string; role?: 'user' | 'admin' } | null>(null)
 
-const replies = computed(() => {
+const replies = computed<PostReply[]>(() => {
   if (detailLoading.value) return []
   if (backendDetail.value) return backendDetail.value.replies
   if (useDevMock && detail.value?.replies?.length) return detail.value.replies
