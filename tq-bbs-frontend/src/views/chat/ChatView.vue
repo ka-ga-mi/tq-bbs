@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { chatDataByUid, emptyChatData, type ChatDataset, type ChatMessage } from '../../mocks/chatData'
 import { avatarAssets, resolveDisplayAvatarUrl } from '../../mocks/userProfile'
@@ -288,6 +288,43 @@ const loadBackendMessages = async () => {
   }
 }
 
+// Lightweight polling: keep chat view updated without requiring navigation refresh.
+// (We don't have WebSocket/SSE in the current backend.)
+let chatPollTimer: ReturnType<typeof window.setInterval> | undefined
+let chatPollInFlight = false
+const CHAT_POLL_INTERVAL_MS = 2500
+
+const startChatPolling = () => {
+  if (chatPollTimer) return
+  chatPollTimer = window.setInterval(async () => {
+    if (chatPollInFlight) return
+    if (!currentUserId.value) return
+
+    chatPollInFlight = true
+    try {
+      if (singleTargetMode.value) {
+        if (!targetUserId.value) return
+        const prevLastId = backendMessages.value.at(-1)?.id || ''
+        await loadBackendMessages()
+        const nextLastId = backendMessages.value.at(-1)?.id || ''
+        if (nextLastId && nextLastId !== prevLastId) void scrollToBottom()
+      } else {
+        await loadConversations()
+      }
+    } catch {
+      // Ignore polling errors; the next tick may recover.
+    } finally {
+      chatPollInFlight = false
+    }
+  }, CHAT_POLL_INTERVAL_MS)
+}
+
+const stopChatPolling = () => {
+  if (!chatPollTimer) return
+  window.clearInterval(chatPollTimer)
+  chatPollTimer = undefined
+}
+
 const sendReply = async () => {
   const content = replyContent.value.trim()
   if (!content) {
@@ -394,7 +431,12 @@ onMounted(() => {
       activeContactId.value = targetUserId.value || targetContactId.value
       void loadBackendMessages()
     }
+    startChatPolling()
   })
+})
+
+onUnmounted(() => {
+  stopChatPolling()
 })
 </script>
 
