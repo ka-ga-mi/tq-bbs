@@ -566,6 +566,23 @@ const loadFollowPostReplyAlert = async () => {
   }
 }
 
+const handlePostRead = (e: Event) => {
+  const ce = e as CustomEvent<{ postId?: string }>
+  const nextPostId = String(ce.detail?.postId || '').trim()
+  if (!nextPostId) return
+
+  unreadPostReplyMap.value = { ...unreadPostReplyMap.value, [nextPostId]: false }
+  unreadFollowPostReplyMap.value = { ...unreadFollowPostReplyMap.value, [nextPostId]: false }
+  hasMyPostReplyAlert.value = Object.values(unreadPostReplyMap.value).some(Boolean)
+  hasFollowPostReplyAlert.value = Object.values(unreadFollowPostReplyMap.value).some(Boolean)
+  void loadMyPostReplyAlert()
+  void loadFollowPostReplyAlert()
+}
+
+const handleChatRead = () => {
+  void loadChatAlertState()
+}
+
 const handlePostReplied = (e: Event) => {
   const ce = e as CustomEvent<{ postId?: string }>
   const nextPostId = String(ce.detail?.postId || '').trim()
@@ -836,6 +853,8 @@ onMounted(() => {
   })
 
   window.addEventListener('tq_bbs_post_replied', handlePostReplied)
+  window.addEventListener('tq_bbs_post_read', handlePostRead)
+  window.addEventListener('tq_bbs_chat_read', handleChatRead)
   if (String(route.query.login || '').trim() === '1') {
     showLoginModal()
   }
@@ -843,6 +862,8 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('tq_bbs_post_replied', handlePostReplied)
+  window.removeEventListener('tq_bbs_post_read', handlePostRead)
+  window.removeEventListener('tq_bbs_chat_read', handleChatRead)
 })
 </script>
 

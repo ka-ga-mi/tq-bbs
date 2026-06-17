@@ -107,6 +107,12 @@ const markContactAsRead = (contactId: string) => {
   all[currentUserId.value] = mine
   localStorage.setItem(CHAT_READ_KEY, JSON.stringify(all))
   unreadContactMap.value = { ...unreadContactMap.value, [contactId]: false }
+  window.dispatchEvent(new CustomEvent('tq_bbs_chat_read', { detail: { contactId } }))
+}
+
+const markActiveContactAsRead = () => {
+  const contactId = singleTargetMode.value ? targetUserId.value || activeContactId.value : activeContactId.value
+  if (contactId) markContactAsRead(contactId)
 }
 
 const hasChatHistory = (contactId: string) => {
@@ -358,7 +364,8 @@ const pollChatUpdates = async () => {
 
     const prevLastId = activeMessages.value.at(-1)?.id || ''
     await loadActiveContactMessages()
-    if (!singleTargetMode.value) await loadConversations()
+    await loadConversations()
+    markActiveContactAsRead()
     const nextLastId = activeMessages.value.at(-1)?.id || ''
     if (nextLastId && nextLastId !== prevLastId) void scrollToBottom()
   } catch {
@@ -471,7 +478,9 @@ watch([targetUserId, currentUid], () => {
 
 watch(activeContactId, (contactId) => {
   if (!contactId || !currentUserId.value) return
-  void loadActiveContactMessages()
+  void loadActiveContactMessages().then(() => {
+    markContactAsRead(contactId)
+  })
 })
 
 watch([activeContactId, activeMessages], () => {
@@ -481,13 +490,15 @@ watch([activeContactId, activeMessages], () => {
 onMounted(() => {
   startChatPolling()
   void loadCurrentUser().then(() => {
-    void loadConversations()
+    void loadConversations().then(() => {
+      markActiveContactAsRead()
+    })
     if (singleTargetMode.value && targetContactId.value) {
       activeContactId.value = targetUserId.value || targetContactId.value
-      void loadBackendMessages()
+      void loadBackendMessages().then(() => markActiveContactAsRead())
       return
     }
-    void loadActiveContactMessages()
+    void loadActiveContactMessages().then(() => markActiveContactAsRead())
   })
 })
 

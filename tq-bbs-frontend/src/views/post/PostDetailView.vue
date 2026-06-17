@@ -12,6 +12,7 @@ type PostReply = {
   userName: string
   avatarUrl: string
   content: string
+  createdAt?: string
 }
 
 type PostDetailData = {
@@ -48,24 +49,6 @@ const POST_REPLY_READ_KEY = 'tq_bbs_post_reply_read_state'
 const POST_FOLLOW_REPLY_READ_KEY = 'tq_bbs_follow_post_reply_read_state'
 
 const currentUser = ref<{ id: string; nickname: string; role?: 'user' | 'admin' } | null>(null)
-
-const upsertReadState = (readKey: string) => {
-  const userId = currentUser.value?.id
-  const currentPostId = postId.value
-  if (!userId || !currentPostId) return
-
-  const now = new Date().toISOString()
-  try {
-    const raw = localStorage.getItem(readKey)
-    const all = (raw ? JSON.parse(raw) : {}) as Record<string, Record<string, string>>
-    const mine = all[userId] ?? {}
-    mine[currentPostId] = now
-    all[userId] = mine
-    localStorage.setItem(readKey, JSON.stringify(all))
-  } catch {
-    // Ignore localStorage errors (should not break replying).
-  }
-}
 
 const replies = computed(() => {
   if (detailLoading.value) return []
@@ -125,8 +108,38 @@ const mapPostDetail = (data: ApiPostDetail): PostDetailData => ({
     userName: item.userName || '匿名用户',
     avatarUrl: resolveDisplayAvatarUrl(item.avatarUrl),
     content: item.content || '',
+    createdAt: item.createdAt,
   })),
 })
+
+const markViewedPostAsRead = () => {
+  const userId = currentUser.value?.id
+  const id = postId.value
+  if (!userId || !id || !backendDetail.value) return
+
+  const incomingTimes = backendDetail.value.replies
+    .filter((reply) => reply.userId && reply.userId !== userId && reply.createdAt)
+    .map((reply) => reply.createdAt as string)
+    .sort()
+  const latest = incomingTimes[incomingTimes.length - 1]
+  if (!latest) return
+
+  const persist = (readKey: string) => {
+    try {
+      const raw = localStorage.getItem(readKey)
+      const all = (raw ? JSON.parse(raw) : {}) as Record<string, Record<string, string>>
+      const mine = all[userId] ?? {}
+      mine[id] = latest
+      all[userId] = mine
+      localStorage.setItem(readKey, JSON.stringify(all))
+    } catch {
+      // ignore
+    }
+  }
+  persist(POST_REPLY_READ_KEY)
+  persist(POST_FOLLOW_REPLY_READ_KEY)
+  window.dispatchEvent(new CustomEvent('tq_bbs_post_read', { detail: { postId: id } }))
+}
 
 const loadBackendPostDetail = async (options?: { silent?: boolean }) => {
   if (!postId.value) return
@@ -140,6 +153,7 @@ const loadBackendPostDetail = async (options?: { silent?: boolean }) => {
     const data = await apiRequest<ApiPostDetail>(`/api/posts/${postId.value}`)
     backendDetail.value = mapPostDetail(data)
     detailLoadFailed.value = false
+    markViewedPostAsRead()
   } catch {
     if (!silent) {
       detailLoadFailed.value = true
@@ -253,8 +267,7 @@ const submitReply = async () => {
   }
 
   // If I replied to this post, clear "unread" prompts in Home page lists.
-  upsertReadState(POST_REPLY_READ_KEY)
-  upsertReadState(POST_FOLLOW_REPLY_READ_KEY)
+  markViewedPostAsRead()
   window.dispatchEvent(new CustomEvent('tq_bbs_post_replied', { detail: { postId: postId.value } }))
 
   replyContent.value = ''
