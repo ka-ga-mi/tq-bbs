@@ -5,6 +5,7 @@ import { homePosts } from '../../mocks/homePosts'
 import { postDetails } from '../../mocks/postDetails'
 import { resolveDisplayAvatarUrl } from '../../mocks/userProfile'
 import { formatMessageTime, resolveMessageCreatedAt, shouldShowMessageTime } from '../../utils/messageTime'
+import { buildMentionPrefix, latestMentionAt } from '../../utils/mention'
 import { apiRequest } from '../../api/client'
 
 type PostReply = {
@@ -36,7 +37,7 @@ const route = useRoute()
 const router = useRouter()
 const replyContent = ref('')
 const replyError = ref('')
-const selectedReplyId = ref('')
+const selectedReplyIds = ref<string[]>([])
 const replyListRef = ref<HTMLElement | null>(null)
 const backendDetail = ref<PostDetailData | null>(null)
 const detailLoading = ref(true)
@@ -48,6 +49,7 @@ const currentPost = computed(() => (useDevMock ? homePosts.find((item) => item.i
 const detail = computed(() => (useDevMock ? postDetails.find((item) => item.id === postId.value) : undefined))
 const POST_REPLY_READ_KEY = 'tq_bbs_post_reply_read_state'
 const POST_FOLLOW_REPLY_READ_KEY = 'tq_bbs_follow_post_reply_read_state'
+const POST_MENTION_READ_KEY = 'tq_bbs_post_mention_read_state'
 
 const currentUser = ref<{ id: string; nickname: string; role?: 'user' | 'admin' } | null>(null)
 
@@ -74,7 +76,25 @@ const isLocked = computed(() => Boolean(backendDetail.value?.isLocked))
 const isAdmin = computed(() => currentUser.value?.role === 'admin')
 const myDisplayName = computed(() => currentUser.value?.nickname ?? '佚名')
 const isMyReply = (replyUserName: string) => replyUserName === myDisplayName.value
-const selectedReply = computed(() => replies.value.find((item) => item.id === selectedReplyId.value) ?? null)
+const selectedReplies = computed(() => replies.value.filter((item) => selectedReplyIds.value.includes(item.id)))
+
+const toggleReplySelection = (replyId: string) => {
+  if (selectedReplyIds.value.includes(replyId)) {
+    selectedReplyIds.value = selectedReplyIds.value.filter((id) => id !== replyId)
+    return
+  }
+  selectedReplyIds.value = [...selectedReplyIds.value, replyId]
+}
+
+const isReplySelected = (replyId: string) => selectedReplyIds.value.includes(replyId)
+
+const selectedReplyNames = computed(() => {
+  const names: string[] = []
+  selectedReplies.value.forEach((reply) => {
+    if (reply.userName && !names.includes(reply.userName)) names.push(reply.userName)
+  })
+  return names
+})
 
 const showReplyTime = (index: number) => {
   const list = replies.value
@@ -127,30 +147,33 @@ const mapPostDetail = (data: ApiPostDetail): PostDetailData => ({
 
 const markViewedPostAsRead = () => {
   const userId = currentUser.value?.id
+  const nickname = currentUser.value?.nickname ?? ''
   const id = postId.value
   if (!userId || !id || !backendDetail.value) return
 
-  const incomingTimes = backendDetail.value.replies
-    .filter((reply) => reply.userId && reply.userId !== userId && reply.createdAt)
-    .map((reply) => reply.createdAt as string)
-    .sort()
-  const latest = incomingTimes[incomingTimes.length - 1]
-  if (!latest) return
-
-  const persist = (readKey: string) => {
+  const persist = (readKey: string, ts: string) => {
+    if (!ts) return
     try {
       const raw = localStorage.getItem(readKey)
       const all = (raw ? JSON.parse(raw) : {}) as Record<string, Record<string, string>>
       const mine = all[userId] ?? {}
-      mine[id] = latest
+      mine[id] = ts
       all[userId] = mine
       localStorage.setItem(readKey, JSON.stringify(all))
     } catch {
       // ignore
     }
   }
-  persist(POST_REPLY_READ_KEY)
-  persist(POST_FOLLOW_REPLY_READ_KEY)
+
+  const incomingTimes = backendDetail.value.replies
+    .filter((reply) => reply.userId && reply.userId !== userId && reply.createdAt)
+    .map((reply) => reply.createdAt as string)
+    .sort()
+  const latestReply = incomingTimes[incomingTimes.length - 1] || ''
+  persist(POST_REPLY_READ_KEY, latestReply)
+  persist(POST_FOLLOW_REPLY_READ_KEY, latestReply)
+  persist(POST_MENTION_READ_KEY, latestMentionAt(backendDetail.value.replies, nickname, userId))
+
   window.dispatchEvent(new CustomEvent('tq_bbs_post_read', { detail: { postId: id } }))
 }
 
@@ -256,7 +279,7 @@ const submitReply = async () => {
     return
   }
 
-  const prefix = selectedReply.value ? `@${selectedReply.value.userName} ` : ''
+  const prefix = buildMentionPrefix(selectedReplyNames.value, content)
   try {
     const data = await apiRequest<{
       id: string
@@ -293,7 +316,7 @@ const submitReply = async () => {
 
   replyContent.value = ''
   replyError.value = ''
-  selectedReplyId.value = ''
+  selectedReplyIds.value = []
   void scrollToReplyBottom(true)
 }
 
@@ -344,7 +367,7 @@ onUnmounted(() => {
           <article
           class="flex cursor-pointer items-start gap-8px sm:gap-10px rounded-6px p-4px"
           :class="isMyReply(reply.userName) ? 'justify-end' : 'justify-start'"
-          @click="selectedReplyId = selectedReplyId === reply.id ? '' : reply.id"
+          @click="toggleReplySelection(reply.id)"
         >
           <div
             class="h-48px w-48px sm:h-62px sm:w-62px shrink-0 overflow-hidden rounded-full border-[5px] border-black bg-danger/90"
@@ -364,11 +387,11 @@ onUnmounted(() => {
           <div class="flex-1" :class="isMyReply(reply.userName) ? 'order-1 text-right' : 'order-2 text-left'">
             <div class="mb-6px tq-text-lg text-muted">
               {{ reply.userName }}
-              <span v-if="selectedReplyId === reply.id" class="ml-8px text-13px text-danger">（已选中）</span>
+              <span v-if="isReplySelected(reply.id)" class="ml-8px text-13px text-danger">（已选中）</span>
             </div>
             <div
               class="inline-block max-w-85% sm:max-w-60% border px-8px py-8px sm:px-10px sm:py-10px text-left text-14px sm:text-20px leading-[1.6] text-black whitespace-pre-line break-words h-auto min-h-fit"
-              :class="selectedReplyId === reply.id ? 'border-danger bg-danger/75' : 'border-[var(--tq-line)] bg-danger/60'"
+              :class="isReplySelected(reply.id) ? 'border-danger bg-danger/75' : 'border-[var(--tq-line)] bg-danger/60'"
             >
               {{ reply.content }}
             </div>
@@ -386,12 +409,12 @@ onUnmounted(() => {
       <textarea
         v-model="replyContent"
         class="tq-input h-68px w-full resize-none rounded-none text-danger leading-[1.6]"
-        :placeholder="isLocked ? '该帖子已被管理员锁定，无法继续发言' : '在这里输入回帖内容...'"
+        :placeholder="isLocked ? '该帖子已被管理员锁定，无法继续发言' : '在这里输入回帖内容，也可手动输入 @昵称 ...'"
         :disabled="isLocked"
         @keydown.enter.exact.prevent="submitReply"
       />
-      <div v-if="selectedReply" class="mt-8px text-12px text-danger/85">
-        正在回复：{{ selectedReply.userName }}（点击消息可切换/取消）
+      <div v-if="selectedReplyNames.length" class="mt-8px text-12px text-danger/85">
+        将 @：{{ selectedReplyNames.join('、') }}（点击消息可多选，再次点击取消）
       </div>
       <p v-if="replyError" class="m-0 mt-8px text-13px text-danger">{{ replyError }}</p>
       <div class="mt-8px flex flex-wrap items-center justify-between gap-8px">
