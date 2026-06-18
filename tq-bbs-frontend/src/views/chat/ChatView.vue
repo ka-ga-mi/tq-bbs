@@ -142,6 +142,9 @@ const markActiveContactAsRead = () => {
 
 const hasChatHistory = (contactId: string) => {
   if (!contactId) return false
+  if (isBackendContactId(contactId) && backendChatData.value?.contacts.some((item) => item.id === contactId)) {
+    return true
+  }
   const thread = currentChatThreads.value.find((item) => item.contactId === contactId)
   if (thread?.messages?.length) return true
   if (singleTargetMode.value && targetUserId.value === contactId) {
@@ -601,32 +604,34 @@ onUnmounted(() => {
         <div class="tq-chat-aside-top flex h-48px sm:h-68px items-center justify-center border-b border-[var(--tq-line)] text-24px sm:text-30px text-danger">⌃</div>
 
         <div class="tq-chat-aside-body h-[calc(100%-96px)] sm:h-[calc(100%-136px)] overflow-auto">
-          <button
+          <div
             v-for="contact in currentChatContacts"
             :key="contact.id"
-            class="group relative flex h-72px w-full items-center border-b border-[var(--tq-line)] bg-transparent px-12px text-left text-16px text-danger"
-            :class="{ 'bg-danger/15': activeContactId === contact.id }"
-            @click="selectContact(contact)"
+            class="tq-chat-contact-row"
+            :class="{ 'is-active': activeContactId === contact.id }"
           >
-            <img :src="contact.avatarUrl || avatarAssets.nose" alt="联系人头像" class="mr-10px h-42px w-42px rounded-full border-[5px] border-black object-cover" />
-            <span class="min-w-0 flex-1">
-              <span class="inline-flex max-w-full items-center gap-6px align-middle">
-                <span class="truncate">{{ contact.name }}</span>
-                <span
-                  v-if="unreadContactMap[contact.id] && activeContactId !== contact.id"
-                  class="inline-flex h-18px min-w-18px shrink-0 items-center justify-center rounded-2px bg-[#ff2a2a] px-4px text-12px font-800 leading-none text-black"
-                  aria-label="新消息"
-                >!</span>
+            <button type="button" class="tq-chat-contact-main" @click="selectContact(contact)">
+              <img :src="contact.avatarUrl || avatarAssets.nose" alt="联系人头像" class="h-42px w-42px shrink-0 rounded-full border-[5px] border-black object-cover" />
+              <span class="min-w-0 flex-1">
+                <span class="inline-flex max-w-full items-center gap-6px align-middle">
+                  <span class="truncate">{{ contact.name }}</span>
+                  <span
+                    v-if="unreadContactMap[contact.id] && activeContactId !== contact.id"
+                    class="inline-flex h-18px min-w-18px shrink-0 items-center justify-center rounded-2px bg-[#ff2a2a] px-4px text-12px font-800 leading-none text-black"
+                    aria-label="新消息"
+                  >!</span>
+                </span>
               </span>
-            </span>
-            <span
+            </button>
+            <button
               v-if="hasChatHistory(contact.id)"
-              class="shrink-0 cursor-pointer rounded border border-[var(--tq-line)] px-8px py-2px text-12px opacity-100 md:absolute md:right-10px md:top-50% md:-translate-y-50% md:opacity-0 md:transition md:group-hover:opacity-100"
-              @click.stop="requestDeleteContact({ id: contact.id, name: contact.name })"
+              type="button"
+              class="tq-chat-contact-delete"
+              @click="requestDeleteContact({ id: contact.id, name: contact.name })"
             >
               删除
-            </span>
-          </button>
+            </button>
+          </div>
           <div v-if="!currentChatContacts.length" class="p-12px text-13px text-muted">当前账号暂无私聊联系人</div>
         </div>
 

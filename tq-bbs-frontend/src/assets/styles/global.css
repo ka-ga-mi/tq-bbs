@@ -435,6 +435,75 @@ a {
   }
 }
 
+.tq-chat-contact-row {
+  display: flex;
+  align-items: center;
+  min-height: 72px;
+  border-bottom: 1px solid var(--tq-line);
+}
+
+.tq-chat-contact-row.is-active {
+  background: rgba(184, 15, 15, 0.15);
+}
+
+.tq-chat-contact-main {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  padding: 0 0 0 12px;
+  border: none;
+  background: transparent;
+  color: var(--tq-danger);
+  font-size: 16px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tq-chat-contact-delete {
+  flex-shrink: 0;
+  margin: 0 10px 0 8px;
+  padding: 4px 10px;
+  border: 1px solid var(--tq-line);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--tq-danger);
+  font-size: 13px;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+@media (max-width: 767px) {
+  .tq-chat-contact-delete {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 32px;
+  }
+}
+
+@media (min-width: 768px) {
+  .tq-chat-contact-row {
+    position: relative;
+  }
+
+  .tq-chat-contact-delete {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    margin: 0;
+    transform: translateY(-50%);
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
+
+  .tq-chat-contact-row:hover .tq-chat-contact-delete {
+    opacity: 1;
+  }
+}
+
 @media (min-width: 768px) {
   .tq-chat-aside {
     max-height: none;
