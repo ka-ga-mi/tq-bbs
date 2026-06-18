@@ -621,7 +621,7 @@ onUnmounted(() => {
             </span>
             <span
               v-if="hasChatHistory(contact.id)"
-              class="absolute right-10px top-50% -translate-y-50% cursor-pointer rounded border border-[var(--tq-line)] px-8px py-2px text-12px opacity-0 transition group-hover:opacity-100"
+              class="shrink-0 cursor-pointer rounded border border-[var(--tq-line)] px-8px py-2px text-12px opacity-100 md:absolute md:right-10px md:top-50% md:-translate-y-50% md:opacity-0 md:transition md:group-hover:opacity-100"
               @click.stop="requestDeleteContact({ id: contact.id, name: contact.name })"
             >
               删除
