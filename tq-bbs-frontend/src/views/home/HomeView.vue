@@ -5,6 +5,7 @@ import { homePosts, type HomePostItem } from '../../mocks/homePosts'
 import { avatarAssets, resolveDisplayAvatarUrl } from '../../mocks/userProfile'
 import { apiRequest } from '../../api/client'
 import { deferIdle } from '../../utils/defer'
+import { latestMentionAt } from '../../utils/mention'
 
 const AUTH_STORAGE_KEY = 'tq_bbs_auth'
 const ITEMS_PER_PAGE = 3
@@ -54,6 +55,10 @@ const POST_FOLLOW_REPLY_READ_KEY = 'tq_bbs_follow_post_reply_read_state'
 const hasFollowPostReplyAlert = ref(false)
 const unreadFollowPostReplyMap = ref<Record<string, boolean>>({})
 const latestFollowPostReplyAtMap = ref<Record<string, string>>({})
+const POST_MENTION_READ_KEY = 'tq_bbs_post_mention_read_state'
+const hasMentionAlert = ref(false)
+const unreadMentionMap = ref<Record<string, boolean>>({})
+const latestMentionAtMap = ref<Record<string, string>>({})
 const posts = ref<HomePostItem[]>([])
 const postsLoading = ref(true)
 const postsLoadFailed = ref(false)
@@ -144,6 +149,7 @@ const openPost = (postId: string) => {
   try {
     markPostReplyAsRead(postId)
     markFollowPostReplyAsRead(postId)
+    markMentionAsRead(postId)
   } catch {
     // Never block navigation when read-state persistence fails.
   }
@@ -239,6 +245,12 @@ const confirmDeletePost = async () => {
       delete followMine[postId]
       followReadAll[uid] = followMine
       localStorage.setItem(POST_FOLLOW_REPLY_READ_KEY, JSON.stringify(followReadAll))
+
+      const mentionReadAll = getMentionReadState()
+      const mentionMine = mentionReadAll[uid] ?? {}
+      delete mentionMine[postId]
+      mentionReadAll[uid] = mentionMine
+      localStorage.setItem(POST_MENTION_READ_KEY, JSON.stringify(mentionReadAll))
     }
     const readAll = getPostReplyReadState()
     if (currentUser.value?.id) {
@@ -252,9 +264,12 @@ const confirmDeletePost = async () => {
     latestPostReplyAtMap.value = withoutPostKey(latestPostReplyAtMap.value, postId) as Record<string, string>
     unreadFollowPostReplyMap.value = withoutPostKey(unreadFollowPostReplyMap.value, postId) as Record<string, boolean>
     latestFollowPostReplyAtMap.value = withoutPostKey(latestFollowPostReplyAtMap.value, postId) as Record<string, string>
+    unreadMentionMap.value = withoutPostKey(unreadMentionMap.value, postId) as Record<string, boolean>
+    latestMentionAtMap.value = withoutPostKey(latestMentionAtMap.value, postId) as Record<string, string>
 
     hasMyPostReplyAlert.value = Object.values(unreadPostReplyMap.value).some(Boolean)
     hasFollowPostReplyAlert.value = Object.values(unreadFollowPostReplyMap.value).some(Boolean)
+    hasMentionAlert.value = Object.values(unreadMentionMap.value).some(Boolean)
   } catch (error) {
     // Keep UI stable; we don't want to block navigation when delete fails.
     // eslint-disable-next-line no-console
@@ -362,6 +377,7 @@ const refreshSecondaryData = () => {
   if (!currentUser.value?.id) return
   void loadChatAlertState()
   void loadMyPostReplyAlert()
+  void loadMentionAlert()
 }
 
 const loadBackendPosts = async () => {
@@ -389,6 +405,7 @@ const loadBackendPosts = async () => {
     }
   } finally {
     postsLoading.value = false
+    if (currentUser.value?.id) deferIdle(() => void loadMentionAlert())
   }
 }
 
@@ -566,6 +583,91 @@ const loadFollowPostReplyAlert = async () => {
   }
 }
 
+const getMentionReadState = () => {
+  try {
+    const raw = localStorage.getItem(POST_MENTION_READ_KEY)
+    if (!raw) return {}
+    const parsed = JSON.parse(raw) as Record<string, unknown>
+    const normalized: Record<string, Record<string, string>> = {}
+    Object.entries(parsed || {}).forEach(([userId, value]) => {
+      if (!value || typeof value !== 'object') return
+      const perPost: Record<string, string> = {}
+      Object.entries(value as Record<string, unknown>).forEach(([postId, ts]) => {
+        if (typeof ts === 'string') perPost[postId] = ts
+      })
+      normalized[userId] = perPost
+    })
+    return normalized
+  } catch {
+    return {}
+  }
+}
+
+const markMentionAsRead = (postId: string) => {
+  const userId = currentUser.value?.id
+  if (!userId || !postId) return
+  const latest = latestMentionAtMap.value[postId]
+  if (!latest) return
+  const all = getMentionReadState()
+  const mine = all[userId] ?? {}
+  mine[postId] = latest
+  all[userId] = mine
+  localStorage.setItem(POST_MENTION_READ_KEY, JSON.stringify(all))
+  unreadMentionMap.value = { ...unreadMentionMap.value, [postId]: false }
+  hasMentionAlert.value = Object.values(unreadMentionMap.value).some(Boolean)
+}
+
+const loadMentionAlert = async () => {
+  const userId = currentUser.value?.id
+  const nickname = currentUser.value?.nickname
+  if (!userId || !nickname) {
+    hasMentionAlert.value = false
+    unreadMentionMap.value = {}
+    latestMentionAtMap.value = {}
+    return
+  }
+
+  try {
+    const targetPosts = posts.value.slice(0, 24)
+    const readState = getMentionReadState()
+    const myRead = readState[userId] ?? {}
+    const nextUnreadMap: Record<string, boolean> = {}
+    const nextLatestMap: Record<string, string> = {}
+
+    const batchSize = 4
+    for (let i = 0; i < targetPosts.length; i += batchSize) {
+      const batch = targetPosts.slice(i, i + batchSize)
+      const details = await Promise.all(
+        batch.map((p) =>
+          apiRequest<{ id: string; replies?: Array<{ userId: string; content: string; createdAt: string }> }>(
+            `/api/posts/${encodeURIComponent(p.id)}`,
+          ).catch(() => null),
+        ),
+      )
+
+      batch.forEach((p, index) => {
+        const post = details[index]
+        if (!post?.id) return
+        const latest = latestMentionAt(post.replies, nickname, userId)
+        nextLatestMap[p.id] = latest
+        if (!latest) {
+          nextUnreadMap[p.id] = false
+          return
+        }
+        nextUnreadMap[p.id] = latest > (myRead[p.id] || '')
+      })
+    }
+
+    latestMentionAtMap.value = nextLatestMap
+    unreadMentionMap.value = nextUnreadMap
+    hasMentionAlert.value = Object.values(nextUnreadMap).some(Boolean)
+  } catch {
+    hasMentionAlert.value = false
+    unreadMentionMap.value = {}
+    latestMentionAtMap.value = {}
+  }
+}
+
 const handlePostRead = (e: Event) => {
   const ce = e as CustomEvent<{ postId?: string }>
   const nextPostId = String(ce.detail?.postId || '').trim()
@@ -573,10 +675,13 @@ const handlePostRead = (e: Event) => {
 
   unreadPostReplyMap.value = { ...unreadPostReplyMap.value, [nextPostId]: false }
   unreadFollowPostReplyMap.value = { ...unreadFollowPostReplyMap.value, [nextPostId]: false }
+  unreadMentionMap.value = { ...unreadMentionMap.value, [nextPostId]: false }
   hasMyPostReplyAlert.value = Object.values(unreadPostReplyMap.value).some(Boolean)
   hasFollowPostReplyAlert.value = Object.values(unreadFollowPostReplyMap.value).some(Boolean)
+  hasMentionAlert.value = Object.values(unreadMentionMap.value).some(Boolean)
   void loadMyPostReplyAlert()
   void loadFollowPostReplyAlert()
+  void loadMentionAlert()
 }
 
 const handleChatRead = () => {
@@ -917,9 +1022,9 @@ onUnmounted(() => {
             >
               {{ type }}
               <span
-                v-if="(type === '我的' && hasMyPostReplyAlert) || (type === '关注' && hasFollowPostReplyAlert)"
+                v-if="(type === '我的' && hasMyPostReplyAlert) || (type === '关注' && hasFollowPostReplyAlert) || (type === '主页' && hasMentionAlert)"
                 class="pointer-events-none absolute -right-8px -top-8px inline-flex h-18px min-w-18px items-center justify-center rounded-2px bg-[#ff2a2a] px-4px text-12px font-800 leading-none text-black"
-                aria-label="帖子有新回复"
+                aria-label="帖子有新回复或被提及"
               >!</span>
             </button>
           </div>
@@ -962,9 +1067,9 @@ onUnmounted(() => {
                 </span>
                 「{{ item.tag }}」{{ item.title }}
                 <span
-                  v-if="(activeType === '我的' && unreadPostReplyMap[item.id]) || (activeType === '关注' && unreadFollowPostReplyMap[item.id])"
+                  v-if="(activeType === '我的' && unreadPostReplyMap[item.id]) || (activeType === '关注' && unreadFollowPostReplyMap[item.id]) || unreadMentionMap[item.id]"
                   class="pointer-events-none ml-4px inline-flex h-16px min-w-16px items-center justify-center rounded-2px bg-[#ff2a2a] px-3px text-10px font-800 leading-none text-black"
-                  aria-label="该帖子有新回复"
+                  aria-label="该帖子有新回复或被提及"
                 >!</span>
               </h3>
               <div class="tq-post-row__actions tq-home-post-card__actions" @click.stop>
