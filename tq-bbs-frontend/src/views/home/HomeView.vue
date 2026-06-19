@@ -5,7 +5,6 @@ import { homePosts, type HomePostItem } from '../../mocks/homePosts'
 import { avatarAssets, resolveDisplayAvatarUrl } from '../../mocks/userProfile'
 import { apiRequest } from '../../api/client'
 import { deferIdle } from '../../utils/defer'
-import { latestMentionAt } from '../../utils/mention'
 
 const AUTH_STORAGE_KEY = 'tq_bbs_auth'
 const ITEMS_PER_PAGE = 3
@@ -141,7 +140,7 @@ const switchType = (type: (typeof postTypes)[number]) => {
   currentPage.value = 1
   if (type === '关注' && isLoggedIn.value) {
     followingLoaded.value = false
-    void loadFollowPostReplyAlert()
+    void loadFollowing()
   }
 }
 
@@ -375,9 +374,7 @@ const restoreAuth = async () => {
 
 const refreshSecondaryData = () => {
   if (!currentUser.value?.id) return
-  void loadChatAlertState()
-  void loadMyPostReplyAlert()
-  void loadMentionAlert()
+  void loadHomeAlerts()
 }
 
 const loadBackendPosts = async () => {
@@ -405,7 +402,7 @@ const loadBackendPosts = async () => {
     }
   } finally {
     postsLoading.value = false
-    if (currentUser.value?.id) deferIdle(() => void loadMentionAlert())
+    if (currentUser.value?.id) deferIdle(() => void loadHomeAlerts())
   }
 }
 
@@ -443,44 +440,97 @@ const markPostReplyAsRead = (postId: string) => {
   hasMyPostReplyAlert.value = Object.values(unreadPostReplyMap.value).some(Boolean)
 }
 
-const loadMyPostReplyAlert = async () => {
+type NotificationSummary = {
+  chat: Array<{ contactId: string; latestIncomingAt: string }>
+  myPostReplies: Array<{ postId: string; latestIncomingAt: string }>
+  followPostReplies: Array<{ postId: string; latestIncomingAt: string }>
+  mentions: Array<{ postId: string; latestMentionAt: string }>
+}
+
+const buildPostAlertMaps = (
+  items: Array<{ postId: string; latestAt: string }>,
+  readMap: Record<string, string>,
+) => {
+  const unreadMap: Record<string, boolean> = {}
+  const latestMap: Record<string, string> = {}
+  items.forEach(({ postId, latestAt }) => {
+    latestMap[postId] = latestAt
+    unreadMap[postId] = latestAt > (readMap[postId] || '')
+  })
+  return { unreadMap, latestMap }
+}
+
+const applyNotificationSummary = (data: NotificationSummary) => {
+  const userId = currentUser.value?.id
+  if (!userId) return
+
+  const chatRead = getReadState()[userId] ?? {}
+  hasNewChat.value = (data.chat ?? []).some(
+    (item) => item.latestIncomingAt && item.latestIncomingAt > (chatRead[item.contactId] || ''),
+  )
+
+  const myReplyRead = getPostReplyReadState()[userId] ?? {}
+  const myMaps = buildPostAlertMaps(
+    (data.myPostReplies ?? []).map((item) => ({ postId: item.postId, latestAt: item.latestIncomingAt })),
+    myReplyRead,
+  )
+  latestPostReplyAtMap.value = myMaps.latestMap
+  unreadPostReplyMap.value = myMaps.unreadMap
+  hasMyPostReplyAlert.value = Object.values(myMaps.unreadMap).some(Boolean)
+
+  const followReplyRead = getFollowPostReplyReadState()[userId] ?? {}
+  const followMaps = buildPostAlertMaps(
+    (data.followPostReplies ?? []).map((item) => ({ postId: item.postId, latestAt: item.latestIncomingAt })),
+    followReplyRead,
+  )
+  latestFollowPostReplyAtMap.value = followMaps.latestMap
+  unreadFollowPostReplyMap.value = followMaps.unreadMap
+  hasFollowPostReplyAlert.value = Object.values(followMaps.unreadMap).some(Boolean)
+
+  const mentionRead = getMentionReadState()[userId] ?? {}
+  const mentionMaps = buildPostAlertMaps(
+    (data.mentions ?? []).map((item) => ({ postId: item.postId, latestAt: item.latestMentionAt })),
+    mentionRead,
+  )
+  latestMentionAtMap.value = mentionMaps.latestMap
+  unreadMentionMap.value = mentionMaps.unreadMap
+  hasMentionAlert.value = Object.values(mentionMaps.unreadMap).some(Boolean)
+}
+
+const resetHomeAlerts = () => {
+  hasNewChat.value = false
+  hasMyPostReplyAlert.value = false
+  hasFollowPostReplyAlert.value = false
+  hasMentionAlert.value = false
+  unreadPostReplyMap.value = {}
+  unreadFollowPostReplyMap.value = {}
+  unreadMentionMap.value = {}
+  latestPostReplyAtMap.value = {}
+  latestFollowPostReplyAtMap.value = {}
+  latestMentionAtMap.value = {}
+}
+
+const loadHomeAlerts = async () => {
   const userId = currentUser.value?.id
   if (!userId) {
-    hasMyPostReplyAlert.value = false
-    unreadPostReplyMap.value = {}
-    latestPostReplyAtMap.value = {}
+    resetHomeAlerts()
     return
   }
   try {
-    const myPosts = await apiRequest<Array<{ id: string; replies?: Array<{ userId: string; createdAt: string }> }>>('/api/posts-mine', {
-      auth: true,
-    })
-    const readState = getPostReplyReadState()
-    const myRead = readState[userId] ?? {}
-    const nextUnreadMap: Record<string, boolean> = {}
-    const nextLatestMap: Record<string, string> = {}
-    ;(Array.isArray(myPosts) ? myPosts : []).forEach((post) => {
-      if (!post.id) return
-      const replyTimes: string[] = []
-      ;(post.replies ?? []).forEach((reply) => {
-        if (reply.userId !== userId && reply.createdAt) replyTimes.push(reply.createdAt)
-      })
-      replyTimes.sort()
-      const latest = replyTimes[replyTimes.length - 1] || ''
-      nextLatestMap[post.id] = latest
-      if (!latest) {
-        nextUnreadMap[post.id] = false
-        return
-      }
-      nextUnreadMap[post.id] = latest > (myRead[post.id] || '')
-    })
-    latestPostReplyAtMap.value = nextLatestMap
-    unreadPostReplyMap.value = nextUnreadMap
-    hasMyPostReplyAlert.value = Object.values(nextUnreadMap).some(Boolean)
+    const data = await apiRequest<NotificationSummary>('/api/notifications/summary', { auth: true })
+    applyNotificationSummary(data)
   } catch {
-    hasMyPostReplyAlert.value = false
-    unreadPostReplyMap.value = {}
-    latestPostReplyAtMap.value = {}
+    resetHomeAlerts()
+  }
+}
+
+const getReadState = () => {
+  try {
+    const raw = localStorage.getItem(CHAT_READ_KEY)
+    if (!raw) return {}
+    return JSON.parse(raw) as Record<string, Record<string, string>>
+  } catch {
+    return {}
   }
 }
 
@@ -520,69 +570,6 @@ const markFollowPostReplyAsRead = (postId: string) => {
   hasFollowPostReplyAlert.value = Object.values(unreadFollowPostReplyMap.value).some(Boolean)
 }
 
-const loadFollowPostReplyAlert = async () => {
-  const userId = currentUser.value?.id
-  if (!userId) {
-    hasFollowPostReplyAlert.value = false
-    unreadFollowPostReplyMap.value = {}
-    latestFollowPostReplyAtMap.value = {}
-    return
-  }
-
-  try {
-    if (!followingLoaded.value) {
-      await loadFollowing()
-    }
-    const followingSet = new Set(followingNicknames.value)
-
-    const followPosts = posts.value
-      .filter((p) => followingSet.has(p.authorName))
-      .slice(0, 8)
-
-    const readState = getFollowPostReplyReadState()
-    const myRead = readState[userId] ?? {}
-    const nextUnreadMap: Record<string, boolean> = {}
-    const nextLatestMap: Record<string, string> = {}
-
-    const batchSize = 4
-    for (let i = 0; i < followPosts.length; i += batchSize) {
-      const batch = followPosts.slice(i, i + batchSize)
-      const details = await Promise.all(
-        batch.map((p) =>
-          apiRequest<{ id: string; replies?: Array<{ userId: string; createdAt: string }> }>(`/api/posts/${encodeURIComponent(p.id)}`).catch(() => null),
-        ),
-      )
-
-      batch.forEach((p, index) => {
-        const post = details[index]
-        if (!post?.id) return
-
-        const replyTimes: string[] = []
-        ;(post.replies ?? []).forEach((reply) => {
-          if (reply.userId !== userId && reply.createdAt) replyTimes.push(reply.createdAt)
-        })
-        replyTimes.sort()
-        const latest = replyTimes[replyTimes.length - 1] || ''
-        nextLatestMap[p.id] = latest
-
-        if (!latest) {
-          nextUnreadMap[p.id] = false
-          return
-        }
-        nextUnreadMap[p.id] = latest > (myRead[p.id] || '')
-      })
-    }
-
-    latestFollowPostReplyAtMap.value = nextLatestMap
-    unreadFollowPostReplyMap.value = nextUnreadMap
-    hasFollowPostReplyAlert.value = Object.values(nextUnreadMap).some(Boolean)
-  } catch {
-    hasFollowPostReplyAlert.value = false
-    unreadFollowPostReplyMap.value = {}
-    latestFollowPostReplyAtMap.value = {}
-  }
-}
-
 const getMentionReadState = () => {
   try {
     const raw = localStorage.getItem(POST_MENTION_READ_KEY)
@@ -617,57 +604,6 @@ const markMentionAsRead = (postId: string) => {
   hasMentionAlert.value = Object.values(unreadMentionMap.value).some(Boolean)
 }
 
-const loadMentionAlert = async () => {
-  const userId = currentUser.value?.id
-  const nickname = currentUser.value?.nickname
-  if (!userId || !nickname) {
-    hasMentionAlert.value = false
-    unreadMentionMap.value = {}
-    latestMentionAtMap.value = {}
-    return
-  }
-
-  try {
-    const targetPosts = posts.value.slice(0, 24)
-    const readState = getMentionReadState()
-    const myRead = readState[userId] ?? {}
-    const nextUnreadMap: Record<string, boolean> = {}
-    const nextLatestMap: Record<string, string> = {}
-
-    const batchSize = 4
-    for (let i = 0; i < targetPosts.length; i += batchSize) {
-      const batch = targetPosts.slice(i, i + batchSize)
-      const details = await Promise.all(
-        batch.map((p) =>
-          apiRequest<{ id: string; replies?: Array<{ userId: string; content: string; createdAt: string }> }>(
-            `/api/posts/${encodeURIComponent(p.id)}`,
-          ).catch(() => null),
-        ),
-      )
-
-      batch.forEach((p, index) => {
-        const post = details[index]
-        if (!post?.id) return
-        const latest = latestMentionAt(post.replies, nickname, userId)
-        nextLatestMap[p.id] = latest
-        if (!latest) {
-          nextUnreadMap[p.id] = false
-          return
-        }
-        nextUnreadMap[p.id] = latest > (myRead[p.id] || '')
-      })
-    }
-
-    latestMentionAtMap.value = nextLatestMap
-    unreadMentionMap.value = nextUnreadMap
-    hasMentionAlert.value = Object.values(nextUnreadMap).some(Boolean)
-  } catch {
-    hasMentionAlert.value = false
-    unreadMentionMap.value = {}
-    latestMentionAtMap.value = {}
-  }
-}
-
 const handlePostRead = (e: Event) => {
   const ce = e as CustomEvent<{ postId?: string }>
   const nextPostId = String(ce.detail?.postId || '').trim()
@@ -679,13 +615,11 @@ const handlePostRead = (e: Event) => {
   hasMyPostReplyAlert.value = Object.values(unreadPostReplyMap.value).some(Boolean)
   hasFollowPostReplyAlert.value = Object.values(unreadFollowPostReplyMap.value).some(Boolean)
   hasMentionAlert.value = Object.values(unreadMentionMap.value).some(Boolean)
-  void loadMyPostReplyAlert()
-  void loadFollowPostReplyAlert()
-  void loadMentionAlert()
+  void loadHomeAlerts()
 }
 
 const handleChatRead = () => {
-  void loadChatAlertState()
+  void loadHomeAlerts()
 }
 
 const handlePostReplied = (e: Event) => {
@@ -764,41 +698,6 @@ const doLogin = async () => {
   if (redirect) {
     const target = redirect.startsWith('/') ? redirect : `/${redirect}`
     void router.replace(target)
-  }
-}
-
-const getReadState = () => {
-  try {
-    const raw = localStorage.getItem(CHAT_READ_KEY)
-    if (!raw) return {}
-    return JSON.parse(raw) as Record<string, Record<string, string>>
-  } catch {
-    return {}
-  }
-}
-
-const loadChatAlertState = async () => {
-  if (!currentUser.value?.id) {
-    hasNewChat.value = false
-    return
-  }
-  try {
-    const data = await apiRequest<
-      Array<{
-        contactId: string
-        messages: Array<{ senderId: string; createdAt: string }>
-      }>
-    >('/api/chat/conversations', { auth: true })
-    const all = getReadState()
-    const myRead = all[currentUser.value.id] ?? {}
-    hasNewChat.value = (Array.isArray(data) ? data : []).some((item) => {
-      const incoming = (item.messages ?? []).filter((msg) => msg.senderId !== currentUser.value?.id)
-      const latestIncomingAt = incoming[incoming.length - 1]?.createdAt || ''
-      if (!latestIncomingAt) return false
-      return latestIncomingAt > (myRead[item.contactId] || '')
-    })
-  } catch {
-    hasNewChat.value = false
   }
 }
 

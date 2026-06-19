@@ -8,6 +8,7 @@ import { routeReqParam } from './routeParam.js'
 import { signToken, verifyToken } from './auth.js'
 import { normalizeAvatarUrl, sanitizeAvatarUrlForApi } from './avatar.js'
 import type { DbMessage, DbPost, DbReply, DbUser, Gender } from './types.js'
+import { buildNotificationSummary } from './notifications.js'
 
 const app = express()
 const port = Number(process.env.PORT || 3000)
@@ -338,6 +339,16 @@ app.delete('/api/auth/account', authMiddleware, (req: AuthedRequest, res) => {
   db.blocks = db.blocks.filter((item) => item.blockerId !== userId && item.blockedId !== userId)
   writeDb(db)
   res.json({ ok: true })
+})
+
+app.get('/api/notifications/summary', authMiddleware, (req: AuthedRequest, res) => {
+  const db = readDb()
+  const summary = buildNotificationSummary(db, req.userId as string)
+  if (!summary) {
+    res.status(404).json({ message: '用户不存在' })
+    return
+  }
+  res.json(summary)
 })
 
 app.get('/api/posts', (_req, res) => {
