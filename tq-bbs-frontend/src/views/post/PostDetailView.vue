@@ -205,17 +205,44 @@ const loadBackendPostDetail = async (options?: { silent?: boolean }) => {
 
 let postPollTimer: ReturnType<typeof window.setInterval> | undefined
 let postPollInFlight = false
-const POST_POLL_INTERVAL_MS = 2500
+const POST_POLL_INTERVAL_MS = 4000
+
+const appendPolledReplies = (items: PostReply[]) => {
+  if (!backendDetail.value || !items.length) return
+  const existing = new Set(backendDetail.value.replies.map((item) => item.id))
+  items.forEach((item) => {
+    if (!item.id || existing.has(item.id)) return
+    backendDetail.value!.replies.push(item)
+  })
+}
 
 const pollPostUpdates = async () => {
-  if (document.hidden || postPollInFlight || !postId.value || detailLoading.value) return
+  if (document.hidden || postPollInFlight || !postId.value || detailLoading.value || !backendDetail.value) return
 
   postPollInFlight = true
   try {
     const el = replyListRef.value
     const shouldFollow = el ? isNearBottom(el) : true
     const prevLastId = replies.value.at(-1)?.id || ''
-    await loadBackendPostDetail({ silent: true })
+    const data = await apiRequest<{
+      replyCount: number
+      lastReplyId: string
+      isLocked: boolean
+      newReplies: PostReply[]
+    }>(`/api/posts/${encodeURIComponent(postId.value)}/replies/poll?afterReplyId=${encodeURIComponent(prevLastId)}`)
+
+    backendDetail.value.isLocked = Boolean(data.isLocked)
+    const mapped = (data.newReplies ?? []).map((item) => ({
+      id: item.id,
+      userId: item.userId,
+      userName: item.userName || '匿名用户',
+      avatarUrl: resolveDisplayAvatarUrl(item.avatarUrl),
+      content: item.content || '',
+      createdAt: resolveMessageCreatedAt(item.createdAt, item.id),
+    }))
+    appendPolledReplies(mapped)
+    if (mapped.length) markViewedPostAsRead()
+
     const nextLastId = replies.value.at(-1)?.id || ''
     if (nextLastId && nextLastId !== prevLastId && shouldFollow) void scrollToReplyBottom()
   } catch {

@@ -9,6 +9,7 @@ import { signToken, verifyToken } from './auth.js'
 import { normalizeAvatarUrl, sanitizeAvatarUrlForApi } from './avatar.js'
 import type { DbMessage, DbPost, DbReply, DbUser, Gender } from './types.js'
 import { buildNotificationSummary } from './notifications.js'
+import { buildChatPoll, buildPostRepliesPoll } from './poll.js'
 
 const app = express()
 const port = Number(process.env.PORT || 3000)
@@ -368,6 +369,22 @@ app.get('/api/posts', (_req, res) => {
   res.json(posts)
 })
 
+app.get('/api/posts/:id/replies/poll', (req, res) => {
+  const db = readDb()
+  const postId = routeReqParam(req, 'id')
+  if (!postId) {
+    res.status(400).json({ message: '缺少帖子 ID' })
+    return
+  }
+  const afterReplyId = String(req.query.afterReplyId || '').trim()
+  const result = buildPostRepliesPoll(db, postId, afterReplyId || undefined)
+  if (!result) {
+    res.status(404).json({ message: '帖子不存在' })
+    return
+  }
+  res.json(result)
+})
+
 app.get('/api/posts/:id', (req, res) => {
   const db = readDb()
   const post = db.posts.find((item) => item.id === routeReqParam(req, 'id'))
@@ -622,6 +639,14 @@ app.post('/api/posts/:id/replies', authMiddleware, (req: AuthedRequest, res) => 
     ...reply,
     avatarUrl: sanitizeAvatarUrlForApi(reply.avatarUrl),
   })
+})
+
+app.get('/api/chat/poll', authMiddleware, (req: AuthedRequest, res) => {
+  const db = readDb()
+  const contactId = String(req.query.contactId || '').trim()
+  const afterMessageId = String(req.query.afterMessageId || '').trim()
+  const result = buildChatPoll(db, req.userId as string, contactId || undefined, afterMessageId || undefined)
+  res.json(result)
 })
 
 app.get('/api/chat/messages/:targetUserId', authMiddleware, (req: AuthedRequest, res) => {

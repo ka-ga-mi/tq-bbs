@@ -135,6 +135,11 @@ const markContactAsRead = (contactId: string) => {
   window.dispatchEvent(new CustomEvent('tq_bbs_chat_read', { detail: { contactId } }))
 }
 
+const isBackendContactId = (contactId: string) =>
+  Boolean(contactId) && !contactId.startsWith('c-') && !contactId.startsWith('route-target-')
+
+const canDeleteContact = (contactId: string) => isBackendContactId(contactId)
+
 const markActiveContactAsRead = () => {
   const contactId = singleTargetMode.value ? targetUserId.value || activeContactId.value : activeContactId.value
   if (contactId) markContactAsRead(contactId)
@@ -154,7 +159,7 @@ const hasChatHistory = (contactId: string) => {
 }
 
 const requestDeleteContact = (contact: { id: string; name: string }) => {
-  if (!hasChatHistory(contact.id)) return
+  if (!canDeleteContact(contact.id)) return
   pendingDeleteContact.value = contact
   deleteContactModalVisible.value = true
 }
@@ -324,9 +329,6 @@ const loadConversations = async () => {
 
 type RawChatMessage = { id: string; senderId: string; content: string; createdAt?: string }
 
-const isBackendContactId = (contactId: string) =>
-  Boolean(contactId) && !contactId.startsWith('c-') && !contactId.startsWith('route-target-')
-
 const mapRawMessages = (
   items: RawChatMessage[],
   contactName: string,
@@ -388,10 +390,84 @@ const loadActiveContactMessages = async () => {
   }
 }
 
-// Lightweight polling: keep chat view updated without requiring navigation refresh.
+// Lightweight polling: incremental sync via /api/chat/poll
 let chatPollTimer: ReturnType<typeof window.setInterval> | undefined
 let chatPollInFlight = false
-const CHAT_POLL_INTERVAL_MS = 2500
+const CHAT_POLL_INTERVAL_MS = 4000
+
+type ChatPollContact = {
+  contactId: string
+  contactName: string
+  avatarUrl: string
+  lastMessageId: string
+  lastMessageAt: string
+  latestIncomingAt: string
+}
+
+type ChatPollResult = {
+  contacts: ChatPollContact[]
+  newMessages: RawChatMessage[]
+}
+
+const resolveActiveContactId = () => {
+  if (singleTargetMode.value) return targetUserId.value || activeContactId.value
+  return activeContactId.value
+}
+
+const applyChatPollResult = (data: ChatPollResult) => {
+  const allRead = getReadState()
+  const myRead = allRead[currentUserId.value] ?? {}
+  const nextUnreadMap: Record<string, boolean> = {}
+  const nextLatestIncomingAtMap: Record<string, string> = {}
+
+  ;(data.contacts ?? []).forEach((item) => {
+    if (!item.latestIncomingAt) {
+      nextUnreadMap[item.contactId] = false
+      return
+    }
+    nextLatestIncomingAtMap[item.contactId] = item.latestIncomingAt
+    nextUnreadMap[item.contactId] = item.latestIncomingAt > (myRead[item.contactId] || '')
+  })
+  unreadContactMap.value = nextUnreadMap
+  latestIncomingAtMap.value = nextLatestIncomingAtMap
+
+  const activeId = resolveActiveContactId()
+  if (!activeId || !isBackendContactId(activeId)) return
+
+  const activeSummary = (data.contacts ?? []).find((item) => item.contactId === activeId)
+  const activeName = activeSummary?.contactName || activeContactName.value
+  const activeAvatar = resolveDisplayAvatarUrl(
+    activeSummary?.avatarUrl || currentChatContacts.value.find((item) => item.id === activeId)?.avatarUrl || '',
+  )
+
+  const appendMessages = (messages: ChatMessage[], incoming: RawChatMessage[]) => {
+    if (!incoming.length) return messages
+    const existing = new Set(messages.map((item) => item.id))
+    const mapped = mapRawMessages(incoming, activeName, activeAvatar)
+    return [...messages, ...mapped.filter((item) => !existing.has(item.id))]
+  }
+
+  if (singleTargetMode.value) {
+    backendMessages.value = appendMessages(backendMessages.value, data.newMessages ?? [])
+    return
+  }
+
+  if (!backendChatData.value) return
+
+  const threadIndex = backendChatData.value.threads.findIndex((item) => item.contactId === activeId)
+  const existingThread = threadIndex >= 0 ? backendChatData.value.threads[threadIndex] : null
+  const nextThread = {
+    contactId: activeId,
+    contactName: activeName,
+    messages: appendMessages(existingThread?.messages ?? [], data.newMessages ?? []),
+  }
+
+  if (threadIndex >= 0) {
+    backendChatData.value.threads[threadIndex] = nextThread
+  } else {
+    backendChatData.value.threads.unshift(nextThread)
+  }
+}
 
 const pollChatUpdates = async () => {
   if (document.hidden || chatPollInFlight) return
@@ -404,9 +480,16 @@ const pollChatUpdates = async () => {
     const el = messageListRef.value
     const shouldFollow = el ? isNearBottom(el) : true
     const prevLastId = activeMessages.value.at(-1)?.id || ''
-    await loadActiveContactMessages()
-    await loadConversations()
+    const activeId = resolveActiveContactId()
+    const params = new URLSearchParams()
+    if (activeId && isBackendContactId(activeId)) params.set('contactId', activeId)
+    if (prevLastId) params.set('afterMessageId', prevLastId)
+
+    const query = params.toString()
+    const data = await apiRequest<ChatPollResult>(`/api/chat/poll${query ? `?${query}` : ''}`, { auth: true })
+    applyChatPollResult(data)
     markActiveContactAsRead()
+
     const nextLastId = activeMessages.value.at(-1)?.id || ''
     if (nextLastId && nextLastId !== prevLastId && shouldFollow) void scrollToBottom()
   } catch {
@@ -586,20 +669,30 @@ onUnmounted(() => {
   <div class="tq-panel h-full min-h-0 border border-[var(--tq-line)] bg-black/96 p-8px sm:p-10px">
     <div class="tq-chat-layout">
       <aside class="tq-chat-aside min-h-0 border border-[var(--tq-line)]" :class="{ 'is-contacts-open': mobileContactsOpen }">
-        <button
-          type="button"
-          class="tq-chat-contacts-toggle"
-          :aria-expanded="mobileContactsOpen"
-          @click="toggleMobileContacts"
-        >
-          <span class="tq-chat-contacts-toggle__arrow">{{ mobileContactsOpen ? '⌃' : '⌄' }}</span>
-          <span class="min-w-0 flex-1 truncate text-left">{{ activeContactName }}</span>
-          <span
-            v-if="hasOtherUnread && !mobileContactsOpen"
-            class="inline-flex h-18px min-w-18px shrink-0 items-center justify-center rounded-2px bg-[#ff2a2a] px-4px text-12px font-800 leading-none text-black"
-            aria-label="其他联系人有新消息"
-          >!</span>
-        </button>
+        <div class="tq-chat-contacts-bar">
+          <button
+            type="button"
+            class="tq-chat-contacts-toggle"
+            :aria-expanded="mobileContactsOpen"
+            @click="toggleMobileContacts"
+          >
+            <span class="tq-chat-contacts-toggle__arrow">{{ mobileContactsOpen ? '⌃' : '⌄' }}</span>
+            <span class="min-w-0 flex-1 truncate text-left">{{ activeContactName }}</span>
+            <span
+              v-if="hasOtherUnread && !mobileContactsOpen"
+              class="inline-flex h-18px min-w-18px shrink-0 items-center justify-center rounded-2px bg-[#ff2a2a] px-4px text-12px font-800 leading-none text-black"
+              aria-label="其他联系人有新消息"
+            >!</span>
+          </button>
+          <button
+            v-if="canDeleteContact(activeContactId)"
+            type="button"
+            class="tq-chat-contact-delete tq-chat-contact-delete--bar"
+            @click="requestDeleteContact({ id: activeContactId, name: activeContactName })"
+          >
+            删除
+          </button>
+        </div>
 
         <div class="tq-chat-aside-top flex h-48px sm:h-68px items-center justify-center border-b border-[var(--tq-line)] text-24px sm:text-30px text-danger">⌃</div>
 
